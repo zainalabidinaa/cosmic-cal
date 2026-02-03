@@ -29,11 +29,34 @@ cat > "$OUTPUT_ASSETS_DIR/Contents.json" <<'EOF'
 }
 EOF
 
+# Create a cropped base image so the icon fills.
+# (Many source icons include transparent padding; iOS 26 looks best when the
+# artwork fills the squircle mask.)
+CROPPED_BASE_PNG="$WORK_DIR/base_cropped.png"
+python3 - <<'PY'
+import subprocess
+import re
+import sys
+from pathlib import Path
+
+base = Path("""$BASE_PNG""")
+out = Path("""$CROPPED_BASE_PNG""")
+
+info = subprocess.check_output(["/usr/bin/sips", "-g", "pixelWidth", "-g", "pixelHeight", str(base)], text=True)
+width = int(re.search(r"pixelWidth:\s*(\d+)", info).group(1))
+height = int(re.search(r"pixelHeight:\s*(\d+)", info).group(1))
+size = min(width, height)
+
+# Crop to 92% to remove transparent margins.
+crop = max(1, int(size * 0.92))
+subprocess.check_call(["/usr/bin/sips", "-c", str(crop), str(crop), str(base), "--out", str(out)], stdout=subprocess.DEVNULL)
+PY
+
 # Helper to generate resized png
 resize() {
   local size=$1
   local out=$2
-  /usr/bin/sips -z "$size" "$size" "$BASE_PNG" --out "$out" >/dev/null
+  /usr/bin/sips -z "$size" "$size" "$CROPPED_BASE_PNG" --out "$out" >/dev/null
 }
 
 # Marketing icon (1024)

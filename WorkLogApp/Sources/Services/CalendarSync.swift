@@ -98,7 +98,11 @@ final class CalendarSync {
             setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
 
-        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin?.location, to: structuredDestination.geoLocation, arrivalDate: log.start) ?? fallbackTravelTime
+        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(
+            from: origin,
+            to: structuredDestination.geoLocation,
+            arrivalDate: log.start
+        ) ?? fallbackTravelTime
         let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
 
         let didSetTravelTime = setTravelTimeIfSupported(event: event, travelTimeSeconds: travelTimeSeconds)
@@ -211,13 +215,25 @@ final class CalendarSync {
         }
     }
 
-    private func estimateTravelTimeSeconds(from origin: CLLocation?, to destination: CLLocation?, arrivalDate: Date?) async -> TimeInterval? {
-        guard let origin, let destination else {
+    private func estimateTravelTimeSeconds(
+        from origin: (title: String, location: CLLocation)?,
+        to destination: CLLocation?,
+        arrivalDate: Date?
+    ) async -> TimeInterval? {
+        guard let destination else {
             return nil
         }
 
         let request = MKDirections.Request()
-        request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin.coordinate))
+
+        if origin?.title == "Current Location" {
+            request.source = MKMapItem.forCurrentLocation()
+        } else if let origin {
+            request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin.location.coordinate))
+        } else {
+            return nil
+        }
+
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
         request.transportType = .automobile
         request.arrivalDate = arrivalDate
