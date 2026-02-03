@@ -25,7 +25,5 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
-    info:
-      path: WorkLogApp/Info.plist
     dependencies:
       - sdk: EventKit.framework
