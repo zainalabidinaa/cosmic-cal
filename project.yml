@@ -15,8 +15,8 @@ targets:
     platform: iOS
     sources:
       - path: WorkLogApp/Sources
-    resources:
-      - path: WorkLogApp/Resources
+      - path: WorkLogApp/Resources/Assets.xcassets
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zainalabidinaa.labmedicinlu
