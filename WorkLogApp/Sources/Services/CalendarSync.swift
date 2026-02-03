@@ -93,7 +93,12 @@ final class CalendarSync {
 
         event.structuredLocation = structuredDestination
 
-        let travelTimeSeconds = await estimateTravelTimeSeconds(to: structuredDestination.geoLocation) ?? fallbackTravelTime
+        let origin = await resolveOriginLocation()
+        if let origin {
+            setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
+        }
+
+        let travelTimeSeconds = await estimateTravelTimeSeconds(from: origin?.location, to: structuredDestination.geoLocation) ?? fallbackTravelTime
         let didSetTravelTime = setTravelTimeIfSupported(event: event, travelTimeSeconds: travelTimeSeconds)
 
         if !didSetTravelTime {
@@ -116,14 +121,44 @@ final class CalendarSync {
 
     private func setTravelTimeIfSupported(event: EKEvent, travelTimeSeconds: TimeInterval) -> Bool {
         // Newer Calendar features (travel time) are not consistently exposed in
-        // Swift overlays across SDK versions, so set via runtime if available.
+        // Swift overlays across SDK versions.
         let setter = Selector(("setTravelTime:"))
         guard event.responds(to: setter) else {
             return false
         }
 
-        event.setValue(travelTimeSeconds, forKey: "travelTime")
+        event.setValue(NSNumber(value: travelTimeSeconds), forKey: "travelTime")
         return true
+    }
+
+    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) {
+        let structured = EKStructuredLocation(title: title)
+        structured.geoLocation = location
+
+        let setters: [Selector] = [
+            Selector(("setTravelStartLocation:")),
+            Selector(("setStructuredTravelStartLocation:")),
+            Selector(("setStructuredStartLocation:")),
+            Selector(("setStartLocation:"))
+        ]
+
+        for setter in setters where event.responds(to: setter) {
+            _ = event.perform(setter, with: structured)
+            return
+        }
+    }
+
+    private func resolveOriginLocation() async -> (title: String, location: CLLocation)? {
+        if let current = try? await locationClient.fetchLocation() {
+            return (title: "Current Location", location: current)
+        }
+
+        if let fallbackCoordinate = try? await geocode(address: originFallbackAddress) {
+            let fallback = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
+            return (title: originFallbackAddress, location: fallback)
+        }
+
+        return nil
     }
 
     private func applyDefaultAlarms(to event: EKEvent, travelTime: TimeInterval) {
@@ -132,7 +167,6 @@ final class CalendarSync {
         let offsets: [TimeInterval] = [
             -(travelTime + 2 * 60 * 60),
             -(travelTime + 1 * 60 * 60),
-            -(travelTime + 30 * 60),
             -travelTime
         ]
 
@@ -158,17 +192,8 @@ final class CalendarSync {
         }
     }
 
-    private func estimateTravelTimeSeconds(to destination: CLLocation?) async -> TimeInterval? {
-        guard let destination else {
-            return nil
-        }
-
-        let origin: CLLocation
-        if let current = try? await locationClient.fetchLocation() {
-            origin = current
-        } else if let fallbackCoordinate = try? await geocode(address: originFallbackAddress) {
-            origin = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
-        } else {
+    private func estimateTravelTimeSeconds(from origin: CLLocation?, to destination: CLLocation?) async -> TimeInterval? {
+        guard let origin, let destination else {
             return nil
         }
 
