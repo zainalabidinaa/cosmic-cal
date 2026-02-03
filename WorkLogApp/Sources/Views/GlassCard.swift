@@ -9,18 +9,19 @@ struct GlassCard<Content: View>: View {
 
     var body: some View {
         content
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(18)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(
                         LinearGradient(
-                            colors: [Color.white.opacity(0.22), Color.white.opacity(0.06)],
+                            colors: [Color.white.opacity(0.24), Color.white.opacity(0.05)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
                         lineWidth: 1
                     )
             )
+            .shadow(color: Color.black.opacity(0.25), radius: 24, x: 0, y: 12)
     }
 }

@@ -21,8 +21,9 @@ struct WorkLogApp: App {
                     .tag(AppTab.history)
             }
             .tint(.mint)
-            .toolbarBackground(.visible, for: .tabBar)
-            .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+            .toolbarColorScheme(.dark, for: .navigationBar, .tabBar)
+            .toolbarBackground(.visible, for: .navigationBar, .tabBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar, .tabBar)
             .environmentObject(store)
         }
     }

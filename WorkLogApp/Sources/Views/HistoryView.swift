@@ -25,6 +25,7 @@ struct HistoryView: View {
                                     HistoryRow(day: dayLabel(for: log.day), time: "\(timeLabel(for: log.start)) – \(timeLabel(for: log.end))")
                                 }
                                 .buttonStyle(.plain)
+                                .listRowBackground(rowBackground)
                             }
                             .onDelete { indexSet in
                                 for index in indexSet {
@@ -34,11 +35,12 @@ struct HistoryView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .listRowSeparator(.hidden)
                 }
             }
             .scrollContentBackground(.hidden)
             .background(background)
-            .navigationTitle("History")
+            .navigationTitle("LMB Lund")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 EditButton()
@@ -46,25 +48,48 @@ struct HistoryView: View {
         }
     }
 
-    private var background: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.06, green: 0.07, blue: 0.10),
-                Color(red: 0.02, green: 0.03, blue: 0.05)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-        .overlay {
-            RadialGradient(
-                colors: [Color.white.opacity(0.10), Color.clear],
-                center: .topTrailing,
-                startRadius: 10,
-                endRadius: 520
+    private var rowBackground: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.22), Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .ignoresSafeArea()
+    }
+
+    private var background: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.05, green: 0.06, blue: 0.09),
+                    Color(red: 0.01, green: 0.02, blue: 0.04)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [Color.white.opacity(0.12), Color.clear],
+                center: .topTrailing,
+                startRadius: 30,
+                endRadius: 640
+            )
+
+            RadialGradient(
+                colors: [Color.mint.opacity(0.10), Color.clear],
+                center: .bottomLeading,
+                startRadius: 20,
+                endRadius: 560
+            )
         }
+        .ignoresSafeArea()
     }
 
     private func dayLabel(for date: Date) -> String {

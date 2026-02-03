@@ -60,7 +60,7 @@ final class WorkLogStore: ObservableObject {
 
         do {
             try await calendarSync.requestAccessIfNeeded()
-            let eventId = try calendarSync.upsertEvent(for: logToSave)
+            let eventId = try await calendarSync.upsertEvent(for: logToSave)
 
             var saved = logToSave
             saved.calendarEventIdentifier = eventId

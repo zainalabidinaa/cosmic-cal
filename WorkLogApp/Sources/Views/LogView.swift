@@ -16,6 +16,7 @@ struct LogView: View {
                         .onChange(of: day) { newValue in
                             loadForDay(newValue)
                         }
+                        .listRowBackground(rowBackground)
                 } header: {
                     Text("Day")
                 }
@@ -38,6 +39,7 @@ struct LogView: View {
                         .padding(.vertical, 2)
                     }
                     .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    .listRowBackground(rowBackground)
                 } header: {
                     Text("Quick Templates")
                 }
@@ -45,9 +47,11 @@ struct LogView: View {
                 Section {
                     DatePicker("Start", selection: $startTime, displayedComponents: [.hourAndMinute])
                         .datePickerStyle(.compact)
+                        .listRowBackground(rowBackground)
 
                     DatePicker("End", selection: $endTime, displayedComponents: [.hourAndMinute])
                         .datePickerStyle(.compact)
+                        .listRowBackground(rowBackground)
                 } header: {
                     Text("Times")
                 }
@@ -56,6 +60,7 @@ struct LogView: View {
                     Section {
                         Label(message, systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
+                            .listRowBackground(rowBackground)
                     }
                 }
 
@@ -63,13 +68,15 @@ struct LogView: View {
                     Section {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
+                            .listRowBackground(rowBackground)
                     }
                 }
             }
             .listStyle(.insetGrouped)
+            .listRowSeparator(.hidden)
             .scrollContentBackground(.hidden)
             .background(background)
-            .navigationTitle("Work Log")
+            .navigationTitle("LMB Lund")
             .navigationBarTitleDisplayMode(.large)
             .safeAreaInset(edge: .bottom) {
                 SaveBar {
@@ -91,25 +98,48 @@ struct LogView: View {
         }
     }
 
-    private var background: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.06, green: 0.07, blue: 0.10),
-                Color(red: 0.02, green: 0.03, blue: 0.05)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-        .overlay {
-            RadialGradient(
-                colors: [Color.white.opacity(0.12), Color.clear],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 520
+    private var rowBackground: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.22), Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .ignoresSafeArea()
+    }
+
+    private var background: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.05, green: 0.06, blue: 0.09),
+                    Color(red: 0.01, green: 0.02, blue: 0.04)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [Color.white.opacity(0.14), Color.clear],
+                center: .topTrailing,
+                startRadius: 30,
+                endRadius: 640
+            )
+
+            RadialGradient(
+                colors: [Color.mint.opacity(0.10), Color.clear],
+                center: .bottomLeading,
+                startRadius: 20,
+                endRadius: 560
+            )
         }
+        .ignoresSafeArea()
     }
 
     private func applyTemplate(startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
@@ -171,5 +201,17 @@ private struct SaveBar: View {
             .padding(.bottom, 12)
         }
         .background(.ultraThinMaterial)
+        .overlay {
+            Rectangle()
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.16), Color.white.opacity(0.04)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+                .allowsHitTesting(false)
+        }
     }
 }
