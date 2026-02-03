@@ -98,7 +98,7 @@ final class CalendarSync {
             setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
 
-        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin?.location, to: structuredDestination.geoLocation, departureDate: log.start) ?? fallbackTravelTime
+        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin?.location, to: structuredDestination.geoLocation, arrivalDate: log.start) ?? fallbackTravelTime
         let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
 
         let didSetTravelTime = setTravelTimeIfSupported(event: event, travelTimeSeconds: travelTimeSeconds)
@@ -184,7 +184,7 @@ final class CalendarSync {
         // Travel-time-relative alarms (matches Calendar's "... before travel time" options).
         // These offsets are relative to the event start date.
         let offsets: [TimeInterval] = [
-            -(travelTime + 2 * 60 * 60),
+            -(travelTime + 30 * 60),
             -(travelTime + 1 * 60 * 60),
             -travelTime
         ]
@@ -211,7 +211,7 @@ final class CalendarSync {
         }
     }
 
-    private func estimateTravelTimeSeconds(from origin: CLLocation?, to destination: CLLocation?, departureDate: Date?) async -> TimeInterval? {
+    private func estimateTravelTimeSeconds(from origin: CLLocation?, to destination: CLLocation?, arrivalDate: Date?) async -> TimeInterval? {
         guard let origin, let destination else {
             return nil
         }
@@ -220,7 +220,7 @@ final class CalendarSync {
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin.coordinate))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
         request.transportType = .automobile
-        request.departureDate = departureDate
+        request.arrivalDate = arrivalDate
 
         let directions = MKDirections(request: request)
         return await withCheckedContinuation { continuation in

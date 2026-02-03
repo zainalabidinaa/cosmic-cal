@@ -49,17 +49,6 @@ resize 80  "$APPICONSET_DIR/icon-40@2x.png"   # 40pt @2x
 resize 180 "$APPICONSET_DIR/icon-60@3x.png"   # 60pt @3x
 resize 120 "$APPICONSET_DIR/icon-60@2x.png"   # 60pt @2x
 
-# iPad
-resize 20  "$APPICONSET_DIR/icon-ipad-20@1x.png"
-resize 40  "$APPICONSET_DIR/icon-ipad-20@2x.png"
-resize 29  "$APPICONSET_DIR/icon-ipad-29@1x.png"
-resize 58  "$APPICONSET_DIR/icon-ipad-29@2x.png"
-resize 40  "$APPICONSET_DIR/icon-ipad-40@1x.png"
-resize 80  "$APPICONSET_DIR/icon-ipad-40@2x.png"
-resize 76  "$APPICONSET_DIR/icon-ipad-76@1x.png"
-resize 152 "$APPICONSET_DIR/icon-ipad-76@2x.png"
-resize 167 "$APPICONSET_DIR/icon-ipad-83.5@2x.png"
-
 python3 "$(dirname "$0")/generate_appicon_contents.py" "$APPICONSET_DIR"
 
 rm -rf "$WORK_DIR"
