@@ -1,0 +1,55 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate App Icon asset catalog
+        run: |
+          chmod +x scripts/generate_appicon.sh
+          python3 -m compileall scripts/generate_appicon_contents.py
+          scripts/generate_appicon.sh "WorkLogApp/Resources/IconSource/AppIcon.icns" "WorkLogApp/Resources/Assets.xcassets"
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build (unsigned)
+        run: |
+          xcodebuild \
+            -project WorkLog.xcodeproj \
+            -scheme WorkLog \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          APP_PATH=$(ls -1 build/Build/Products/Release-iphoneos/*.app | head -n 1)
+          rm -rf Payload WorkLog.ipa
+          mkdir -p Payload
+          cp -R "$APP_PATH" "Payload/WorkLog.app"
+          /usr/bin/zip -r WorkLog.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkLog-ipa
+          path: WorkLog.ipa
