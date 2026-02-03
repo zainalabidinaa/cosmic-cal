@@ -13,7 +13,7 @@ struct LogView: View {
                 Section {
                     DatePicker("Day", selection: $day, displayedComponents: [.date])
                         .datePickerStyle(.compact)
-                        .onChange(of: day) { newValue in
+                        .onChange(of: day) { _, newValue in
                             loadForDay(newValue)
                         }
                         .listRowBackground(rowBackground)
@@ -89,7 +89,7 @@ struct LogView: View {
             .onAppear {
                 loadForDay(day)
             }
-            .onChange(of: store.requestedEditDay) { newValue in
+            .onChange(of: store.requestedEditDay) { _, newValue in
                 guard let newValue else { return }
                 day = newValue
                 loadForDay(newValue)

@@ -93,12 +93,36 @@ final class CalendarSync {
         event.structuredLocation = structuredDestination
 
         let travelTimeSeconds = await estimateTravelTimeSeconds(to: structuredDestination.geoLocation) ?? fallbackTravelTime
-        event.travelTime = travelTimeSeconds
+        let didSetTravelTime = setTravelTimeIfSupported(event: event, travelTimeSeconds: travelTimeSeconds)
+
+        if !didSetTravelTime {
+            let minutes = Int((travelTimeSeconds / 60).rounded())
+            let travelNote = "Travel time: ~\(minutes) min"
+            if let existingNotes = event.notes, !existingNotes.isEmpty {
+                if !existingNotes.contains(travelNote) {
+                    event.notes = existingNotes + "\n" + travelNote
+                }
+            } else {
+                event.notes = travelNote
+            }
+        }
 
         applyDefaultAlarms(to: event, travelTime: travelTimeSeconds)
 
         try eventStore.save(event, span: .thisEvent, commit: true)
         return event.eventIdentifier
+    }
+
+    private func setTravelTimeIfSupported(event: EKEvent, travelTimeSeconds: TimeInterval) -> Bool {
+        // Newer Calendar features (travel time) are not consistently exposed in
+        // Swift overlays across SDK versions, so set via runtime if available.
+        let setter = Selector(("setTravelTime:"))
+        guard event.responds(to: setter) else {
+            return false
+        }
+
+        event.setValue(travelTimeSeconds, forKey: "travelTime")
+        return true
     }
 
     private func applyDefaultAlarms(to event: EKEvent, travelTime: TimeInterval) {
@@ -175,7 +199,7 @@ final class CalendarSync {
 }
 
 @MainActor
-private final class LocationClient: NSObject, CLLocationManagerDelegate {
+private final class LocationClient: NSObject, @preconcurrency CLLocationManagerDelegate {
     enum LocationError: Error {
         case denied
         case restricted
@@ -213,42 +237,48 @@ private final class LocationClient: NSObject, CLLocationManagerDelegate {
         return try await requestOneShotLocation()
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        guard let continuation = authorizationContinuation else { return }
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            guard let continuation = authorizationContinuation else { return }
 
-        switch manager.authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            authorizationContinuation = nil
-            continuation.resume()
-        case .denied:
-            authorizationContinuation = nil
-            continuation.resume(throwing: LocationError.denied)
-        case .restricted:
-            authorizationContinuation = nil
-            continuation.resume(throwing: LocationError.restricted)
-        case .notDetermined:
-            break
-        @unknown default:
-            authorizationContinuation = nil
-            continuation.resume(throwing: LocationError.unavailable)
+            switch manager.authorizationStatus {
+            case .authorizedAlways, .authorizedWhenInUse:
+                authorizationContinuation = nil
+                continuation.resume()
+            case .denied:
+                authorizationContinuation = nil
+                continuation.resume(throwing: LocationError.denied)
+            case .restricted:
+                authorizationContinuation = nil
+                continuation.resume(throwing: LocationError.restricted)
+            case .notDetermined:
+                break
+            @unknown default:
+                authorizationContinuation = nil
+                continuation.resume(throwing: LocationError.unavailable)
+            }
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let continuation = locationContinuation else { return }
-        locationContinuation = nil
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        Task { @MainActor in
+            guard let continuation = locationContinuation else { return }
+            locationContinuation = nil
 
-        if let location = locations.first {
-            continuation.resume(returning: location)
-        } else {
-            continuation.resume(throwing: LocationError.unavailable)
+            if let location = locations.first {
+                continuation.resume(returning: location)
+            } else {
+                continuation.resume(throwing: LocationError.unavailable)
+            }
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        guard let continuation = locationContinuation else { return }
-        locationContinuation = nil
-        continuation.resume(throwing: error)
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            guard let continuation = locationContinuation else { return }
+            locationContinuation = nil
+            continuation.resume(throwing: error)
+        }
     }
 
     private func requestAuthorization() async throws {
