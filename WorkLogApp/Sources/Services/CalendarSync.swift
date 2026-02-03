@@ -98,37 +98,19 @@ final class CalendarSync {
             setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
 
-        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(
-            from: origin,
-            to: structuredDestination.geoLocation,
-            arrivalDate: log.start
-        ) ?? fallbackTravelTime
-        let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
+        // Do NOT write a fixed travel-time duration.
+        // Calendar will then default to "Based on location" (car) instead of selecting
+        // a hardcoded "40 minutes" row.
+        clearFixedTravelTimeIfSupported(event: event)
+        setTravelRoutingModeIfSupported(event: event)
 
-        let didSetTravelTime = setTravelTimeIfSupported(event: event, travelTimeSeconds: travelTimeSeconds)
-
-        if !didSetTravelTime {
-            let minutes = Int((travelTimeSeconds / 60).rounded())
-            let travelNote = "Travel time: ~\(minutes) min"
-            if let existingNotes = event.notes, !existingNotes.isEmpty {
-                if !existingNotes.contains(travelNote) {
-                    event.notes = existingNotes + "\n" + travelNote
-                }
-            } else {
-                event.notes = travelNote
-            }
-        }
-
-        applyDefaultAlarms(to: event, travelTime: travelTimeSeconds)
+        applyDefaultAlarms(to: event)
 
         try eventStore.save(event, span: .thisEvent, commit: true)
         return event.eventIdentifier
     }
 
-    private func setTravelTimeIfSupported(event: EKEvent, travelTimeSeconds: TimeInterval) -> Bool {
-        // Use KVC when the runtime exposes the key. `perform(_:with:)` is not reliable
-        // for numeric setters because it only supports object arguments.
-        let value = NSNumber(value: travelTimeSeconds)
+    private func clearFixedTravelTimeIfSupported(event: EKEvent) {
         let keys = ["travelTime", "travelTimeInterval", "travelTimeDuration"]
 
         for key in keys {
@@ -136,12 +118,25 @@ final class CalendarSync {
             let setter = Selector(("set" + key.prefix(1).uppercased() + key.dropFirst() + ":"))
 
             if event.responds(to: getter) || event.responds(to: setter) {
-                event.setValue(value, forKey: key)
-                return true
+                event.setValue(nil, forKey: key)
             }
         }
+    }
 
-        return false
+    private func setTravelRoutingModeIfSupported(event: EKEvent) {
+        // Best-effort: prefer driving when Calendar computes "Based on location".
+        let keys = ["travelRoutingMode", "travelMode", "travelTransportType"]
+        let drivingValue = NSNumber(value: 0)
+
+        for key in keys {
+            let getter = Selector((key))
+            let setter = Selector(("set" + key.prefix(1).uppercased() + key.dropFirst() + ":"))
+
+            if event.responds(to: getter) || event.responds(to: setter) {
+                event.setValue(drivingValue, forKey: key)
+                return
+            }
+        }
     }
 
     private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) {
@@ -184,13 +179,14 @@ final class CalendarSync {
         return nil
     }
 
-    private func applyDefaultAlarms(to event: EKEvent, travelTime: TimeInterval) {
-        // Travel-time-relative alarms (matches Calendar's "... before travel time" options).
-        // These offsets are relative to the event start date.
+    private func applyDefaultAlarms(to event: EKEvent) {
+        // Calendar-style travel-time alarms.
+        // These offsets are relative to the start of travel time ("Time to Leave"),
+        // not the event start.
         let offsets: [TimeInterval] = [
-            -(travelTime + 30 * 60),
-            -(travelTime + 1 * 60 * 60),
-            -travelTime
+            -(30 * 60),
+            -(1 * 60 * 60),
+            0
         ]
 
         event.alarms = offsets.map { EKAlarm(relativeOffset: $0) }
