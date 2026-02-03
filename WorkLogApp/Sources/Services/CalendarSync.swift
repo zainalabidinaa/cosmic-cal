@@ -122,18 +122,19 @@ final class CalendarSync {
     }
 
     private func setTravelTimeIfSupported(event: EKEvent, travelTimeSeconds: TimeInterval) -> Bool {
-        // Newer Calendar features (travel time) are not consistently exposed in
-        // Swift overlays across SDK versions. Set via runtime selectors only.
+        // Use KVC when the runtime exposes the key. `perform(_:with:)` is not reliable
+        // for numeric setters because it only supports object arguments.
         let value = NSNumber(value: travelTimeSeconds)
-        let setters: [Selector] = [
-            Selector(("setTravelTime:")),
-            Selector(("setTravelTimeInterval:")),
-            Selector(("setTravelTimeDuration:"))
-        ]
+        let keys = ["travelTime", "travelTimeInterval", "travelTimeDuration"]
 
-        for setter in setters where event.responds(to: setter) {
-            _ = event.perform(setter, with: value)
-            return true
+        for key in keys {
+            let getter = Selector((key))
+            let setter = Selector(("set" + key.prefix(1).uppercased() + key.dropFirst() + ":"))
+
+            if event.responds(to: getter) || event.responds(to: setter) {
+                event.setValue(value, forKey: key)
+                return true
+            }
         }
 
         return false
@@ -143,16 +144,26 @@ final class CalendarSync {
         let structured = EKStructuredLocation(title: title)
         structured.geoLocation = location
 
-        let setters: [Selector] = [
+        let setterSelectors: [Selector] = [
             Selector(("setTravelStartLocation:")),
             Selector(("setStructuredTravelStartLocation:")),
             Selector(("setStructuredStartLocation:")),
             Selector(("setStartLocation:"))
         ]
 
-        for setter in setters where event.responds(to: setter) {
+        for setter in setterSelectors where event.responds(to: setter) {
             _ = event.perform(setter, with: structured)
             return
+        }
+
+        // Fallback to KVC if the runtime exposes a key.
+        let keys = ["travelStartLocation", "structuredTravelStartLocation", "structuredStartLocation", "startLocation"]
+        for key in keys {
+            let getter = Selector((key))
+            if event.responds(to: getter) {
+                event.setValue(structured, forKey: key)
+                return
+            }
         }
     }
 
