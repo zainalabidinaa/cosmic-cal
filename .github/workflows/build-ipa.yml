@@ -42,7 +42,13 @@ jobs:
 
       - name: Package IPA
         run: |
-          APP_PATH=$(ls -1 build/Build/Products/Release-iphoneos/*.app | head -n 1)
+          APP_PATH=$(ls -1d build/Build/Products/Release-iphoneos/*.app 2>/dev/null | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found at build/Build/Products/Release-iphoneos"
+            ls -la build/Build/Products/Release-iphoneos || true
+            exit 1
+          fi
+
           echo "App path: $APP_PATH"
           rm -rf Payload WorkLog.ipa
           mkdir -p Payload
