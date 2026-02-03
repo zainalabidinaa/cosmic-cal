@@ -98,7 +98,9 @@ final class CalendarSync {
             setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
 
-        let travelTimeSeconds = await estimateTravelTimeSeconds(from: origin?.location, to: structuredDestination.geoLocation) ?? fallbackTravelTime
+        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin?.location, to: structuredDestination.geoLocation, departureDate: log.start) ?? fallbackTravelTime
+        let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
+
         let didSetTravelTime = setTravelTimeIfSupported(event: event, travelTimeSeconds: travelTimeSeconds)
 
         if !didSetTravelTime {
@@ -121,14 +123,20 @@ final class CalendarSync {
 
     private func setTravelTimeIfSupported(event: EKEvent, travelTimeSeconds: TimeInterval) -> Bool {
         // Newer Calendar features (travel time) are not consistently exposed in
-        // Swift overlays across SDK versions.
-        let setter = Selector(("setTravelTime:"))
-        guard event.responds(to: setter) else {
-            return false
+        // Swift overlays across SDK versions. Set via runtime selectors only.
+        let value = NSNumber(value: travelTimeSeconds)
+        let setters: [Selector] = [
+            Selector(("setTravelTime:")),
+            Selector(("setTravelTimeInterval:")),
+            Selector(("setTravelTimeDuration:"))
+        ]
+
+        for setter in setters where event.responds(to: setter) {
+            _ = event.perform(setter, with: value)
+            return true
         }
 
-        event.setValue(NSNumber(value: travelTimeSeconds), forKey: "travelTime")
-        return true
+        return false
     }
 
     private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) {
@@ -192,7 +200,7 @@ final class CalendarSync {
         }
     }
 
-    private func estimateTravelTimeSeconds(from origin: CLLocation?, to destination: CLLocation?) async -> TimeInterval? {
+    private func estimateTravelTimeSeconds(from origin: CLLocation?, to destination: CLLocation?, departureDate: Date?) async -> TimeInterval? {
         guard let origin, let destination else {
             return nil
         }
@@ -201,6 +209,7 @@ final class CalendarSync {
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin.coordinate))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
         request.transportType = .automobile
+        request.departureDate = departureDate
 
         let directions = MKDirections(request: request)
         return await withCheckedContinuation { continuation in
