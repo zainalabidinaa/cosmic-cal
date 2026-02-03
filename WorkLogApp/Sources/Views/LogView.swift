@@ -9,83 +9,106 @@ struct LogView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    DatePicker("Day", selection: $day, displayedComponents: [.date])
-                        .datePickerStyle(.compact)
-                        .onChange(of: day) { _, newValue in
-                            loadForDay(newValue)
+            ZStack {
+                background
+
+                ScrollView {
+                    VStack(spacing: 18) {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Shift")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+
+                                DatePicker("Day", selection: $day, displayedComponents: [.date])
+                                    .datePickerStyle(.compact)
+                                    .onChange(of: day) { _, newValue in
+                                        loadForDay(newValue)
+                                    }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .listRowBackground(rowBackground)
-                } header: {
-                    Text("Day")
-                }
 
-                Section {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            TemplateChip("08:00–16:30") {
-                                applyTemplate(startHour: 8, startMinute: 0, endHour: 16, endMinute: 30)
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Quick Templates")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        TemplateChip("08:00–16:30") {
+                                            applyTemplate(startHour: 8, startMinute: 0, endHour: 16, endMinute: 30)
+                                        }
+
+                                        TemplateChip("08:30–17:00") {
+                                            applyTemplate(startHour: 8, startMinute: 30, endHour: 17, endMinute: 0)
+                                        }
+
+                                        TemplateChip("10:10–19:00") {
+                                            applyTemplate(startHour: 10, startMinute: 10, endHour: 19, endMinute: 0)
+                                        }
+                                    }
+                                    .padding(.vertical, 2)
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
 
-                            TemplateChip("08:30–17:00") {
-                                applyTemplate(startHour: 8, startMinute: 30, endHour: 17, endMinute: 0)
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Times")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+
+                                DatePicker("Start", selection: $startTime, displayedComponents: [.hourAndMinute])
+                                    .datePickerStyle(.compact)
+
+                                DatePicker("End", selection: $endTime, displayedComponents: [.hourAndMinute])
+                                    .datePickerStyle(.compact)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
 
-                            TemplateChip("10:10–19:00") {
-                                applyTemplate(startHour: 10, startMinute: 10, endHour: 19, endMinute: 0)
+                        if let message = store.lastSaveMessage {
+                            GlassCard {
+                                Label(message, systemImage: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
                             }
                         }
-                        .padding(.vertical, 2)
+
+                        if let error = store.lastErrorMessage {
+                            GlassCard {
+                                Label(error, systemImage: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+
+                        Button {
+                            Task {
+                                await store.upsertLog(day: day, start: startTime, end: endTime)
+                                loadForDay(day)
+                            }
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .font(.headline)
+                                Text("Save")
+                                    .font(.headline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.white.opacity(0.14))
                     }
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-                    .listRowBackground(rowBackground)
-                } header: {
-                    Text("Quick Templates")
-                }
-
-                Section {
-                    DatePicker("Start", selection: $startTime, displayedComponents: [.hourAndMinute])
-                        .datePickerStyle(.compact)
-                        .listRowBackground(rowBackground)
-
-                    DatePicker("End", selection: $endTime, displayedComponents: [.hourAndMinute])
-                        .datePickerStyle(.compact)
-                        .listRowBackground(rowBackground)
-                } header: {
-                    Text("Times")
-                }
-
-                if let message = store.lastSaveMessage {
-                    Section {
-                        Label(message, systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .listRowBackground(rowBackground)
-                    }
-                }
-
-                if let error = store.lastErrorMessage {
-                    Section {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                            .listRowBackground(rowBackground)
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
                 }
             }
-            .listStyle(.insetGrouped)
-            .listRowSeparator(.hidden)
-            .scrollContentBackground(.hidden)
-            .background(background)
             .navigationTitle("LMB Lund")
             .navigationBarTitleDisplayMode(.large)
-            .safeAreaInset(edge: .bottom) {
-                SaveBar {
-                    Task {
-                        await store.upsertLog(day: day, start: startTime, end: endTime)
-                        loadForDay(day)
-                    }
-                }
-            }
             .onAppear {
                 loadForDay(day)
             }
@@ -96,22 +119,6 @@ struct LogView: View {
                 store.requestedEditDay = nil
             }
         }
-    }
-
-    private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.22), Color.white.opacity(0.05)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
     }
 
     private var background: some View {
@@ -133,10 +140,10 @@ struct LogView: View {
             )
 
             RadialGradient(
-                colors: [Color.mint.opacity(0.10), Color.clear],
+                colors: [Color.mint.opacity(0.12), Color.clear],
                 center: .bottomLeading,
-                startRadius: 20,
-                endRadius: 560
+                startRadius: 30,
+                endRadius: 620
             )
         }
         .ignoresSafeArea()
@@ -174,44 +181,25 @@ private struct TemplateChip: View {
         Button(action: action) {
             Text(label)
                 .font(.subheadline.weight(.semibold))
-                .padding(.vertical, 9)
-                .padding(.horizontal, 12)
-        }
-        .buttonStyle(.bordered)
-        .tint(Color.white.opacity(0.18))
-    }
-}
-
-private struct SaveBar: View {
-    let action: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Divider().overlay(Color.white.opacity(0.08))
-            Button(action: action) {
-                Text("Save")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .font(.headline)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.white.opacity(0.14))
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
-        }
-        .background(.ultraThinMaterial)
-        .overlay {
-            Rectangle()
-                .stroke(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.16), Color.white.opacity(0.04)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
+                .foregroundStyle(.primary)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
+                .background(
+                    .ultraThinMaterial,
+                    in: Capsule(style: .continuous)
                 )
-                .allowsHitTesting(false)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.20), Color.white.opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
         }
+        .buttonStyle(.plain)
     }
 }

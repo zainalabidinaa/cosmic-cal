@@ -6,7 +6,9 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                background
+
                 if store.logs.isEmpty {
                     ContentUnavailableView(
                         "No Work Logs Yet",
@@ -15,53 +17,35 @@ struct HistoryView: View {
                     )
                     .padding(.horizontal, 24)
                 } else {
-                    List {
-                        Section {
+                    ScrollView {
+                        LazyVStack(spacing: 14) {
                             ForEach(store.logs) { log in
-                                Button {
-                                    store.requestEdit(day: log.day)
-                                    selectedTab = .log
-                                } label: {
-                                    HistoryRow(day: dayLabel(for: log.day), time: "\(timeLabel(for: log.start)) – \(timeLabel(for: log.end))")
-                                }
-                                .buttonStyle(.plain)
-                                .listRowBackground(rowBackground)
-                            }
-                            .onDelete { indexSet in
-                                for index in indexSet {
-                                    store.deleteLog(store.logs[index])
+                                GlassCard {
+                                    Button {
+                                        store.requestEdit(day: log.day)
+                                        selectedTab = .log
+                                    } label: {
+                                        HistoryRow(day: dayLabel(for: log.day), time: "\(timeLabel(for: log.start)) – \(timeLabel(for: log.end))")
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button("Delete", role: .destructive) {
+                                            store.deleteLog(log)
+                                        }
+                                    }
                                 }
                             }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
                     }
-                    .listStyle(.insetGrouped)
-                    .listRowSeparator(.hidden)
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(background)
             .navigationTitle("LMB Lund")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                EditButton()
-            }
         }
-    }
-
-    private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.22), Color.white.opacity(0.05)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
     }
 
     private var background: some View {

@@ -23,6 +23,7 @@ final class CalendarSync {
     private let locationClient = LocationClient()
 
     private let destinationAddress = "Akutgatan 8, Lund"
+    private let originFallbackAddress = "Traktörsgatan 11, Helsingborg"
     private let fallbackTravelTime: TimeInterval = 45 * 60
 
     func requestAccessIfNeeded() async throws {
@@ -126,18 +127,16 @@ final class CalendarSync {
     }
 
     private func applyDefaultAlarms(to event: EKEvent, travelTime: TimeInterval) {
-        let leaveTime = event.startDate.addingTimeInterval(-travelTime)
-
-        let alarmDates: [Date] = [
-            leaveTime.addingTimeInterval(-2 * 60 * 60),
-            leaveTime.addingTimeInterval(-1 * 60 * 60),
-            leaveTime.addingTimeInterval(-30 * 60),
-            leaveTime
+        // Travel-time-relative alarms (matches Calendar's "... before travel time" options).
+        // These offsets are relative to the event start date.
+        let offsets: [TimeInterval] = [
+            -(travelTime + 2 * 60 * 60),
+            -(travelTime + 1 * 60 * 60),
+            -(travelTime + 30 * 60),
+            -travelTime
         ]
 
-        event.alarms = alarmDates
-            .sorted()
-            .map { EKAlarm(absoluteDate: $0) }
+        event.alarms = offsets.map { EKAlarm(relativeOffset: $0) }
     }
 
     private func geocode(address: String) async throws -> CLLocationCoordinate2D {
@@ -164,12 +163,17 @@ final class CalendarSync {
             return nil
         }
 
-        guard let current = try? await locationClient.fetchLocation() else {
+        let origin: CLLocation
+        if let current = try? await locationClient.fetchLocation() {
+            origin = current
+        } else if let fallbackCoordinate = try? await geocode(address: originFallbackAddress) {
+            origin = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
+        } else {
             return nil
         }
 
         let request = MKDirections.Request()
-        request.source = MKMapItem(placemark: MKPlacemark(coordinate: current.coordinate))
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin.coordinate))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
         request.transportType = .automobile
 
