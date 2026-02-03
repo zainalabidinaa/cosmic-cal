@@ -33,14 +33,14 @@ EOF
 # (Many source icons include transparent padding; iOS 26 looks best when the
 # artwork fills the squircle mask.)
 CROPPED_BASE_PNG="$WORK_DIR/base_cropped.png"
-python3 - <<'PY'
+python3 - "$BASE_PNG" "$CROPPED_BASE_PNG" <<'PY'
 import subprocess
 import re
 import sys
 from pathlib import Path
 
-base = Path("""$BASE_PNG""")
-out = Path("""$CROPPED_BASE_PNG""")
+base = Path(sys.argv[1])
+out = Path(sys.argv[2])
 
 info = subprocess.check_output(["/usr/bin/sips", "-g", "pixelWidth", "-g", "pixelHeight", str(base)], text=True)
 width = int(re.search(r"pixelWidth:\s*(\d+)", info).group(1))
