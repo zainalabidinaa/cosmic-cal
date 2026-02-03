@@ -22,6 +22,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.zainalabidinaa.labmedicinlu
         INFOPLIST_FILE: WorkLogApp/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
     info:
       path: WorkLogApp/Info.plist
     dependencies:

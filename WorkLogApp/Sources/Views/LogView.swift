@@ -9,94 +9,80 @@ struct LogView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                background
+            List {
+                Section {
+                    DatePicker("Day", selection: $day, displayedComponents: [.date])
+                        .datePickerStyle(.compact)
+                        .onChange(of: day) { newValue in
+                            loadForDay(newValue)
+                        }
+                } header: {
+                    Text("Day")
+                }
 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Work Log")
-                                    .font(.title2.weight(.semibold))
+                Section {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            TemplateChip("08:00–16:30") {
+                                applyTemplate(startHour: 8, startMinute: 0, endHour: 16, endMinute: 30)
+                            }
 
-                                DatePicker("Day", selection: $day, displayedComponents: [.date])
-                                    .datePickerStyle(.compact)
-                                    .onChange(of: day) { _, newValue in
-                                        loadForDay(newValue)
-                                    }
+                            TemplateChip("08:30–17:00") {
+                                applyTemplate(startHour: 8, startMinute: 30, endHour: 17, endMinute: 0)
+                            }
+
+                            TemplateChip("10:10–19:00") {
+                                applyTemplate(startHour: 10, startMinute: 10, endHour: 19, endMinute: 0)
                             }
                         }
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Quick templates")
-                                    .font(.headline)
-
-                                HStack(spacing: 10) {
-                                    TemplateButton(label: "08:00–16:30") {
-                                        applyTemplate(startHour: 8, startMinute: 0, endHour: 16, endMinute: 30)
-                                    }
-
-                                    TemplateButton(label: "08:30–17:00") {
-                                        applyTemplate(startHour: 8, startMinute: 30, endHour: 17, endMinute: 0)
-                                    }
-
-                                    TemplateButton(label: "10:10–19:00") {
-                                        applyTemplate(startHour: 10, startMinute: 10, endHour: 19, endMinute: 0)
-                                    }
-                                }
-                            }
-                        }
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Times")
-                                    .font(.headline)
-
-                                DatePicker("Start", selection: $startTime, displayedComponents: [.hourAndMinute])
-                                    .datePickerStyle(.compact)
-
-                                DatePicker("End", selection: $endTime, displayedComponents: [.hourAndMinute])
-                                    .datePickerStyle(.compact)
-                            }
-                        }
-
-                        if let message = store.lastSaveMessage {
-                            GlassCard {
-                                Label(message, systemImage: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                            }
-                        }
-
-                        if let error = store.lastErrorMessage {
-                            GlassCard {
-                                Label(error, systemImage: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-
-                        Button {
-                            Task {
-                                await store.upsertLog(day: day, start: startTime, end: endTime)
-                                loadForDay(day)
-                            }
-                        } label: {
-                            Text("Save")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .font(.headline)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color.white.opacity(0.12))
+                        .padding(.vertical, 2)
                     }
-                    .padding(16)
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                } header: {
+                    Text("Quick Templates")
+                }
+
+                Section {
+                    DatePicker("Start", selection: $startTime, displayedComponents: [.hourAndMinute])
+                        .datePickerStyle(.compact)
+
+                    DatePicker("End", selection: $endTime, displayedComponents: [.hourAndMinute])
+                        .datePickerStyle(.compact)
+                } header: {
+                    Text("Times")
+                }
+
+                if let message = store.lastSaveMessage {
+                    Section {
+                        Label(message, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+
+                if let error = store.lastErrorMessage {
+                    Section {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
-            .navigationTitle("Log")
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(background)
+            .navigationTitle("Work Log")
+            .navigationBarTitleDisplayMode(.large)
+            .safeAreaInset(edge: .bottom) {
+                SaveBar {
+                    Task {
+                        await store.upsertLog(day: day, start: startTime, end: endTime)
+                        loadForDay(day)
+                    }
+                }
+            }
             .onAppear {
                 loadForDay(day)
             }
-            .onChange(of: store.requestedEditDay) { _, newValue in
+            .onChange(of: store.requestedEditDay) { newValue in
                 guard let newValue else { return }
                 day = newValue
                 loadForDay(newValue)
@@ -108,22 +94,22 @@ struct LogView: View {
     private var background: some View {
         LinearGradient(
             colors: [
-                Color(red: 0.08, green: 0.09, blue: 0.12),
-                Color(red: 0.04, green: 0.05, blue: 0.08)
+                Color(red: 0.06, green: 0.07, blue: 0.10),
+                Color(red: 0.02, green: 0.03, blue: 0.05)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
         .ignoresSafeArea()
-        .overlay(
+        .overlay {
             RadialGradient(
-                colors: [Color.white.opacity(0.10), Color.clear],
+                colors: [Color.white.opacity(0.12), Color.clear],
                 center: .topTrailing,
-                startRadius: 10,
-                endRadius: 420
+                startRadius: 20,
+                endRadius: 520
             )
             .ignoresSafeArea()
-        )
+        }
     }
 
     private func applyTemplate(startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
@@ -145,20 +131,45 @@ struct LogView: View {
     }
 }
 
-private struct TemplateButton: View {
-    let label: String
-    let action: () -> Void
+private struct TemplateChip: View {
+    private let label: String
+    private let action: () -> Void
+
+    init(_ label: String, action: @escaping () -> Void) {
+        self.label = label
+        self.action = action
+    }
 
     var body: some View {
         Button(action: action) {
             Text(label)
                 .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 9)
+                .padding(.horizontal, 12)
         }
         .buttonStyle(.bordered)
-        .tint(Color.white.opacity(0.14))
+        .tint(Color.white.opacity(0.18))
+    }
+}
+
+private struct SaveBar: View {
+    let action: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider().overlay(Color.white.opacity(0.08))
+            Button(action: action) {
+                Text("Save")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .font(.headline)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.white.opacity(0.14))
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 12)
+        }
+        .background(.ultraThinMaterial)
     }
 }

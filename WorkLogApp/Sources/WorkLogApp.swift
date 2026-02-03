@@ -20,6 +20,9 @@ struct WorkLogApp: App {
                     }
                     .tag(AppTab.history)
             }
+            .tint(.mint)
+            .toolbarBackground(.visible, for: .tabBar)
+            .toolbarBackground(.ultraThinMaterial, for: .tabBar)
             .environmentObject(store)
         }
     }

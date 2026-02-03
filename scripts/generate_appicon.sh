@@ -37,7 +37,7 @@ resize() {
 }
 
 # Marketing icon (1024)
-cp "$BASE_PNG" "$APPICONSET_DIR/icon-1024.png"
+resize 1024 "$APPICONSET_DIR/icon-1024.png"
 
 # iPhone
 resize 60  "$APPICONSET_DIR/icon-20@3x.png"   # 20pt @3x
