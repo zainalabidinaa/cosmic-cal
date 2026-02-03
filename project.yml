@@ -25,4 +25,4 @@ targets:
     info:
       path: WorkLogApp/Info.plist
     dependencies:
-      - framework: EventKit.framework
+      - sdk: EventKit.framework
