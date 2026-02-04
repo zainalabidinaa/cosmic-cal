@@ -96,11 +96,13 @@ final class CalendarSync {
         event.structuredLocation = structuredDestination
 
         let origin = await resolveOriginLocation()
-        _ = setTravelStartLocationIfSupported(
-            event: event,
-            title: origin?.title ?? originFallbackAddress,
-            location: origin?.location
-        )
+        if let origin {
+            _ = setTravelStartLocationIfSupported(
+                event: event,
+                title: origin.title,
+                location: origin.location
+            )
+        }
         _ = setTravelTimeEnabledIfSupported(event: event)
         _ = setTravelRoutingModeIfSupported(event: event)
         let basedOnLocationApplied = setTravelTimeModeIfSupported(event: event)
@@ -232,59 +234,36 @@ final class CalendarSync {
         return false
     }
 
-    @discardableResult
-    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation?) -> Bool {
-        let isCurrentLocation = (title == "Current Location")
-        let startMapItem: MKMapItem? = {
-            if isCurrentLocation, location == nil {
-                return MKMapItem.forCurrentLocation()
-            }
-
-            if let location {
-                return MKMapItem(placemark: MKPlacemark(coordinate: location.coordinate))
-            }
-
-            return nil
-        }()
+    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) -> Bool {
         let structured = EKStructuredLocation(title: title)
-        // Use the current coordinate to ensure travel can be enabled.
-        // Even when the title is "Current Location", Calendar may require a geoLocation
-        // to turn travel time on.
-        if let location {
-            structured.geoLocation = location
-        }
-
-        let mapItemSelectors: [Selector] = [
-            Selector(("setTravelStartLocationMapItem:")),
-            Selector(("setTravelStartMapItem:")),
-            Selector(("setStartLocationMapItem:"))
-        ]
-
-        if let startMapItem {
-            for selector in mapItemSelectors {
-                if ObjCInvocation.safeSetObject(target: event, selector: selector, value: startMapItem) { return true }
-            }
-        }
+        structured.geoLocation = location
 
         let setterSelectors: [Selector] = [
+            Selector(("setTravelStartLocation:")),
             Selector(("setStructuredTravelStartLocation:")),
             Selector(("setStructuredStartLocation:")),
-            Selector(("setTravelStartLocation:")),
             Selector(("setStartLocation:"))
         ]
 
-        for setter in setterSelectors {
-            if isCurrentLocation {
-                if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: nil) { return true }
-            }
+        for setter in setterSelectors where event.responds(to: setter) {
+            _ = event.perform(setter, with: structured)
+            return true
+        }
 
-            if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: structured) { return true }
+        // Fallback to KVC if the runtime exposes a key.
+        let keys = ["travelStartLocation", "structuredTravelStartLocation", "structuredStartLocation", "startLocation"]
+        for key in keys {
+            let getter = Selector((key))
+            if event.responds(to: getter) {
+                event.setValue(structured, forKey: key)
+                return true
+            }
         }
 
         return false
     }
 
-    private func resolveOriginLocation() async -> (title: String, location: CLLocation?)? {
+    private func resolveOriginLocation() async -> (title: String, location: CLLocation)? {
         if let current = try? await locationClient.fetchLocation() {
             return (title: "Current Location", location: current)
         }
@@ -294,7 +273,7 @@ final class CalendarSync {
             return (title: originFallbackAddress, location: fallback)
         }
 
-        return (title: originFallbackAddress, location: nil)
+        return nil
     }
 
     private func applyDefaultAlarms(to event: EKEvent) {
@@ -310,7 +289,7 @@ final class CalendarSync {
     }
 
     private func estimateTravelTimeSeconds(
-        from origin: (title: String, location: CLLocation?)?,
+        from origin: (title: String, location: CLLocation)?,
         to destination: CLLocation?,
         arrivalDate: Date?
     ) async -> TimeInterval? {
@@ -320,13 +299,8 @@ final class CalendarSync {
 
         let request = MKDirections.Request()
 
-        if origin?.title == "Current Location" && origin?.location == nil {
-            request.source = MKMapItem.forCurrentLocation()
-        } else if let originLocation = origin?.location {
-            request.source = MKMapItem(placemark: MKPlacemark(coordinate: originLocation.coordinate))
-        } else {
-            return nil
-        }
+        guard let originLocation = origin?.location else { return nil }
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: originLocation.coordinate))
 
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
         request.transportType = .automobile
