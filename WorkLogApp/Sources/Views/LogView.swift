@@ -6,6 +6,7 @@ struct LogView: View {
     @State private var day: Date = Date().startOfLocalDay()
     @State private var startTime: Date = Date.at(day: Date(), hour: 8, minute: 0)
     @State private var endTime: Date = Date.at(day: Date(), hour: 16, minute: 30)
+    @State private var animateIn = false
 
     var body: some View {
         NavigationStack {
@@ -17,7 +18,7 @@ struct LogView: View {
                         GlassCard {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Shift")
-                                    .font(.headline)
+                                    .font(sectionTitleFont)
                                     .foregroundStyle(.secondary)
 
                                 DatePicker("Day", selection: $day, displayedComponents: [.date])
@@ -32,7 +33,7 @@ struct LogView: View {
                         GlassCard {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Quick Templates")
-                                    .font(.headline)
+                                    .font(sectionTitleFont)
                                     .foregroundStyle(.secondary)
 
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -58,7 +59,7 @@ struct LogView: View {
                         GlassCard {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Times")
-                                    .font(.headline)
+                                    .font(sectionTitleFont)
                                     .foregroundStyle(.secondary)
 
                                 DatePicker("Start", selection: $startTime, displayedComponents: [.hourAndMinute])
@@ -92,16 +93,19 @@ struct LogView: View {
                         } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: "checkmark.seal.fill")
-                                    .font(.headline)
+                                    .font(.custom("Avenir Next", size: 16).weight(.semibold))
                                 Text("Save")
-                                    .font(.headline)
+                                    .font(.custom("Avenir Next", size: 16).weight(.semibold))
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(Color.white.opacity(0.14))
+                        .tint(Color.white.opacity(0.18))
                     }
+                    .opacity(animateIn ? 1 : 0)
+                    .offset(y: animateIn ? 0 : 12)
+                    .animation(.easeOut(duration: 0.6), value: animateIn)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                     .padding(.bottom, 24)
@@ -111,6 +115,7 @@ struct LogView: View {
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
                 loadForDay(day)
+                animateIn = true
             }
             .onChange(of: store.requestedEditDay) { _, newValue in
                 guard let newValue else { return }
@@ -131,6 +136,32 @@ struct LogView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.cyan.opacity(0.25), Color.clear],
+                        center: .center,
+                        startRadius: 20,
+                        endRadius: 220
+                    )
+                )
+                .frame(width: 260, height: 260)
+                .offset(x: 120, y: -160)
+                .blur(radius: 6)
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.mint.opacity(0.22), Color.clear],
+                        center: .center,
+                        startRadius: 20,
+                        endRadius: 240
+                    )
+                )
+                .frame(width: 300, height: 300)
+                .offset(x: -140, y: 180)
+                .blur(radius: 8)
 
             RadialGradient(
                 colors: [Color.white.opacity(0.14), Color.clear],
@@ -166,6 +197,10 @@ struct LogView: View {
             applyTemplate(startHour: 8, startMinute: 0, endHour: 16, endMinute: 30)
         }
     }
+
+    private var sectionTitleFont: Font {
+        .custom("Avenir Next", size: 15).weight(.semibold)
+    }
 }
 
 private struct TemplateChip: View {
@@ -180,23 +215,39 @@ private struct TemplateChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.subheadline.weight(.semibold))
+                .font(.custom("Avenir Next", size: 14).weight(.semibold))
                 .foregroundStyle(.primary)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 14)
                 .background(
-                    .ultraThinMaterial,
+                    .thinMaterial,
                     in: Capsule(style: .continuous)
                 )
                 .overlay(
                     Capsule(style: .continuous)
                         .stroke(
                             LinearGradient(
-                                colors: [Color.white.opacity(0.20), Color.white.opacity(0.05)],
+                                colors: [Color.white.opacity(0.30), Color.white.opacity(0.06)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
                             lineWidth: 1
+                        )
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        .blur(radius: 2)
+                        .offset(y: 1)
+                        .mask(
+                            Capsule(style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.white, Color.clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
                         )
                 )
         }

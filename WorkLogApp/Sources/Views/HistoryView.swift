@@ -3,6 +3,7 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject private var store: WorkLogStore
     @Binding var selectedTab: AppTab
+    @State private var animateIn = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +17,9 @@ struct HistoryView: View {
                         description: Text("Save a shift in the Log tab and it’ll show up here.")
                     )
                     .padding(.horizontal, 24)
+                    .opacity(animateIn ? 1 : 0)
+                    .offset(y: animateIn ? 0 : 12)
+                    .animation(.easeOut(duration: 0.6), value: animateIn)
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 14) {
@@ -37,6 +41,9 @@ struct HistoryView: View {
                                 }
                             }
                         }
+                        .opacity(animateIn ? 1 : 0)
+                        .offset(y: animateIn ? 0 : 12)
+                        .animation(.easeOut(duration: 0.6), value: animateIn)
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
                         .padding(.bottom, 24)
@@ -45,6 +52,9 @@ struct HistoryView: View {
             }
             .navigationTitle("LMB Lund")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                animateIn = true
+            }
         }
     }
 
@@ -58,6 +68,32 @@ struct HistoryView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.cyan.opacity(0.22), Color.clear],
+                        center: .center,
+                        startRadius: 20,
+                        endRadius: 220
+                    )
+                )
+                .frame(width: 260, height: 260)
+                .offset(x: 120, y: -160)
+                .blur(radius: 6)
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.mint.opacity(0.20), Color.clear],
+                        center: .center,
+                        startRadius: 20,
+                        endRadius: 240
+                    )
+                )
+                .frame(width: 300, height: 300)
+                .offset(x: -140, y: 180)
+                .blur(radius: 8)
 
             RadialGradient(
                 colors: [Color.white.opacity(0.12), Color.clear],
@@ -99,10 +135,10 @@ private struct HistoryRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(day)
-                    .font(.headline)
+                    .font(.custom("Avenir Next", size: 16).weight(.semibold))
 
                 Text(time)
-                    .font(.subheadline)
+                    .font(.custom("Avenir Next", size: 14))
                     .foregroundStyle(.secondary)
             }
 
