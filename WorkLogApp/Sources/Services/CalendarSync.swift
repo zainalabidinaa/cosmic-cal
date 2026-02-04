@@ -98,6 +98,7 @@ final class CalendarSync {
             _ = setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
         _ = setTravelRoutingModeIfSupported(event: event)
+        _ = setTravelTimeBasedOnLocationIfSupported(event: event)
 
         // Do NOT estimate or persist travel time.
         // We want Calendar's UI to stay on "Based on location" (Driving), and we want
@@ -131,9 +132,37 @@ final class CalendarSync {
     }
 
     @discardableResult
+    private func setTravelTimeBasedOnLocationIfSupported(event: EKEvent) -> Bool {
+        // Best-effort: nudge Calendar into the "Based on location" travel-time mode.
+        // There is no public EventKit API for this; we try a few known private-style
+        // selectors, guarded by runtime signature checks.
+        let boolSetters: [Selector] = [
+            Selector(("setTravelTimeBasedOnLocation:")),
+            Selector(("setTravelTimeIsBasedOnLocation:")),
+            Selector(("setUsesTravelTimeBasedOnLocation:")),
+            Selector(("setUseTravelTimeBasedOnLocation:")),
+            Selector(("setTravelTimeIsEstimated:"))
+        ]
+
+        for selector in boolSetters {
+            if ObjCInvocation.safeSetBool(target: event, selector: selector, value: true) { return true }
+            if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: 1) { return true }
+            if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: true)) { return true }
+        }
+
+        return false
+    }
+
+    @discardableResult
     private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) -> Bool {
+        let isCurrentLocation = (title == "Current Location")
+
         let structured = EKStructuredLocation(title: title)
-        structured.geoLocation = location
+        // For current location, prefer leaving geoLocation unset. Calendar should
+        // resolve current location dynamically.
+        if !isCurrentLocation {
+            structured.geoLocation = location
+        }
 
         let setterSelectors: [Selector] = [
             Selector(("setStructuredTravelStartLocation:")),
@@ -143,7 +172,12 @@ final class CalendarSync {
         ]
 
         for setter in setterSelectors {
-            if ObjCInvocation.safeSetObject(target: event, selector: setter, value: structured) { return true }
+            // Some implementations interpret nil travel start location as "Current Location".
+            if isCurrentLocation {
+                if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: nil) { return true }
+            }
+
+            if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: structured) { return true }
         }
 
         return false
@@ -210,7 +244,7 @@ final class CalendarSync {
 }
 
 private enum ObjCInvocation {
-    static func safeSetObject(target: NSObject, selector: Selector, value: NSObject) -> Bool {
+    static func safeSetOptionalObject(target: NSObject, selector: Selector, value: NSObject?) -> Bool {
         guard target.responds(to: selector),
               let method = class_getInstanceMethod(type(of: target), selector)
         else {
@@ -222,10 +256,46 @@ private enum ObjCInvocation {
         }
 
         let imp = target.method(for: selector)
-        typealias Fn = @convention(c) (AnyObject, Selector, AnyObject) -> Void
+        typealias Fn = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
         let fn = unsafeBitCast(imp, to: Fn.self)
         fn(target, selector, value)
         return true
+    }
+
+    static func safeSetObject(target: NSObject, selector: Selector, value: NSObject) -> Bool {
+        safeSetOptionalObject(target: target, selector: selector, value: value)
+    }
+
+    static func safeSetBool(target: NSObject, selector: Selector, value: Bool) -> Bool {
+        guard target.responds(to: selector),
+              let method = class_getInstanceMethod(type(of: target), selector)
+        else {
+            return false
+        }
+
+        guard isVoidReturn(method: method) else {
+            return false
+        }
+
+        let argType = copyArgumentType(method: method, index: 2)
+        guard let first = argType.first else { return false }
+
+        switch first {
+        case "B":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Bool) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, value)
+            return true
+        case "c":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Int8) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, value ? 1 : 0)
+            return true
+        default:
+            return false
+        }
     }
 
     static func safeSetInteger(target: NSObject, selector: Selector, value: Int) -> Bool {
