@@ -97,6 +97,7 @@ final class CalendarSync {
         if let origin {
             _ = setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
+        _ = setTravelTimeEnabledIfSupported(event: event)
         _ = setTravelRoutingModeIfSupported(event: event)
         _ = setTravelTimeBasedOnLocationIfSupported(event: event)
 
@@ -154,15 +155,33 @@ final class CalendarSync {
     }
 
     @discardableResult
-    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) -> Bool {
-        let isCurrentLocation = (title == "Current Location")
+    private func setTravelTimeEnabledIfSupported(event: EKEvent) -> Bool {
+        // Best-effort: toggle travel time ON.
+        // Calendar's UI has a dedicated on/off toggle; EventKit does not expose this publicly.
+        // We try a few likely private-style setters.
+        let setters: [Selector] = [
+            Selector(("setTravelTimeEnabled:")),
+            Selector(("setHasTravelTime:")),
+            Selector(("setTravelTimeOn:")),
+            Selector(("setIncludesTravelTime:"))
+        ]
 
-        let structured = EKStructuredLocation(title: title)
-        // For current location, prefer leaving geoLocation unset. Calendar should
-        // resolve current location dynamically.
-        if !isCurrentLocation {
-            structured.geoLocation = location
+        for selector in setters {
+            if ObjCInvocation.safeSetBool(target: event, selector: selector, value: true) { return true }
+            if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: 1) { return true }
+            if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: true)) { return true }
         }
+
+        return false
+    }
+
+    @discardableResult
+    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) -> Bool {
+        let structured = EKStructuredLocation(title: title)
+        // Use the current coordinate to ensure travel can be enabled.
+        // Even when the title is "Current Location", Calendar may require a geoLocation
+        // to turn travel time on.
+        structured.geoLocation = location
 
         let setterSelectors: [Selector] = [
             Selector(("setStructuredTravelStartLocation:")),
@@ -172,11 +191,6 @@ final class CalendarSync {
         ]
 
         for setter in setterSelectors {
-            // Some implementations interpret nil travel start location as "Current Location".
-            if isCurrentLocation {
-                if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: nil) { return true }
-            }
-
             if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: structured) { return true }
         }
 
