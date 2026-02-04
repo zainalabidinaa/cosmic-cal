@@ -256,7 +256,7 @@ final class CalendarSync {
 
         if let fallbackCoordinate = try? await geocode(address: originFallbackAddress) {
             let fallback = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
-            return (title: originFallbackAddress, location: fallback)
+            return (title: "Current Location", location: fallback)
         }
 
         return nil
