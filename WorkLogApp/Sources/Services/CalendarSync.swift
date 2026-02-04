@@ -235,12 +235,35 @@ final class CalendarSync {
     @discardableResult
     private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation?) -> Bool {
         let isCurrentLocation = (title == "Current Location")
+        let startMapItem: MKMapItem? = {
+            if isCurrentLocation, location == nil {
+                return MKMapItem.forCurrentLocation()
+            }
+
+            if let location {
+                return MKMapItem(placemark: MKPlacemark(coordinate: location.coordinate))
+            }
+
+            return nil
+        }()
         let structured = EKStructuredLocation(title: title)
         // Use the current coordinate to ensure travel can be enabled.
         // Even when the title is "Current Location", Calendar may require a geoLocation
         // to turn travel time on.
         if let location {
             structured.geoLocation = location
+        }
+
+        let mapItemSelectors: [Selector] = [
+            Selector(("setTravelStartLocationMapItem:")),
+            Selector(("setTravelStartMapItem:")),
+            Selector(("setStartLocationMapItem:"))
+        ]
+
+        if let startMapItem {
+            for selector in mapItemSelectors {
+                if ObjCInvocation.safeSetObject(target: event, selector: selector, value: startMapItem) { return true }
+            }
         }
 
         let setterSelectors: [Selector] = [
