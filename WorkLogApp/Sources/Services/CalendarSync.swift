@@ -1,6 +1,7 @@
 import CoreLocation
 import EventKit
 import Foundation
+import MapKit
 import ObjectiveC.runtime
 
 enum CalendarSyncError: LocalizedError {
@@ -81,7 +82,7 @@ final class CalendarSync {
         let event = EKEvent(eventStore: eventStore)
 
         event.calendar = calendar
-        event.title = "LMB Lund"
+        event.title = "Labmedicin Bas Lund"
         event.startDate = log.start
         event.endDate = log.end
 
@@ -97,7 +98,7 @@ final class CalendarSync {
         let origin = await resolveOriginLocation()
         _ = setTravelStartLocationIfSupported(
             event: event,
-            title: origin?.title ?? "Current Location",
+            title: origin?.title ?? originFallbackAddress,
             location: origin?.location
         )
         _ = setTravelTimeEnabledIfSupported(event: event)
@@ -105,8 +106,13 @@ final class CalendarSync {
         _ = setTravelRoutingModeIfSupported(event: event)
         _ = setTravelTimeBasedOnLocationIfSupported(event: event)
 
-        // Best-effort: set fixed travel time to force Travel Time ON.
-        _ = setFixedTravelTimeIfSupported(event: event, seconds: fixedTravelTimeSeconds)
+        let estimatedTravelSeconds = await estimateTravelTimeSeconds(
+            from: origin,
+            to: structuredDestination.geoLocation,
+            arrivalDate: log.start
+        )
+        let travelSeconds = estimatedTravelSeconds ?? fixedTravelTimeSeconds
+        _ = setFixedTravelTimeIfSupported(event: event, seconds: travelSeconds)
 
         // Do NOT estimate or persist travel time.
         // We want Calendar's UI to stay on "Based on location" (Driving), and we want
@@ -260,10 +266,10 @@ final class CalendarSync {
 
         if let fallbackCoordinate = try? await geocode(address: originFallbackAddress) {
             let fallback = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
-            return (title: "Current Location", location: fallback)
+            return (title: originFallbackAddress, location: fallback)
         }
 
-        return (title: "Current Location", location: nil)
+        return nil
     }
 
     private func applyDefaultAlarms(to event: EKEvent) {
@@ -276,6 +282,38 @@ final class CalendarSync {
         ]
 
         event.alarms = offsets.map { EKAlarm(relativeOffset: $0) }
+    }
+
+    private func estimateTravelTimeSeconds(
+        from origin: (title: String, location: CLLocation?)?,
+        to destination: CLLocation?,
+        arrivalDate: Date?
+    ) async -> TimeInterval? {
+        guard let destination else {
+            return nil
+        }
+
+        let request = MKDirections.Request()
+
+        if origin?.title == "Current Location" && origin?.location == nil {
+            request.source = MKMapItem.forCurrentLocation()
+        } else if let originLocation = origin?.location {
+            request.source = MKMapItem(placemark: MKPlacemark(coordinate: originLocation.coordinate))
+        } else {
+            return nil
+        }
+
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
+        request.transportType = .automobile
+        request.arrivalDate = arrivalDate
+
+        let directions = MKDirections(request: request)
+        return await withCheckedContinuation { continuation in
+            directions.calculate { response, _ in
+                let best = response?.routes.min(by: { $0.expectedTravelTime < $1.expectedTravelTime })
+                continuation.resume(returning: best?.expectedTravelTime)
+            }
+        }
     }
 
     private func geocode(address: String) async throws -> CLLocationCoordinate2D {
