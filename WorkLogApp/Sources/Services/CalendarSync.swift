@@ -147,21 +147,6 @@ final class CalendarSync {
             if ObjCInvocation.safeSetObject(target: event, selector: setter, value: NSNumber(value: 0)) { return true }
         }
 
-        let value = NSNumber(value: 0)
-        for setter in setters where event.responds(to: setter) {
-            _ = event.perform(setter, with: value)
-            return true
-        }
-
-        let keys = ["travelRoutingMode", "travelMode", "travelTransportType"]
-        for key in keys {
-            let getter = Selector((key))
-            if event.responds(to: getter) {
-                event.setValue(value, forKey: key)
-                return true
-            }
-        }
-
         return false
     }
 
@@ -184,27 +169,6 @@ final class CalendarSync {
             if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: true)) { return true }
         }
 
-        let value = NSNumber(value: true)
-        for selector in boolSetters where event.responds(to: selector) {
-            _ = event.perform(selector, with: value)
-            return true
-        }
-
-        let keys = [
-            "travelTimeBasedOnLocation",
-            "travelTimeIsBasedOnLocation",
-            "usesTravelTimeBasedOnLocation",
-            "useTravelTimeBasedOnLocation",
-            "travelTimeIsEstimated"
-        ]
-        for key in keys {
-            let getter = Selector((key))
-            if event.responds(to: getter) {
-                event.setValue(value, forKey: key)
-                return true
-            }
-        }
-
         return false
     }
 
@@ -223,22 +187,6 @@ final class CalendarSync {
             for value in candidates {
                 if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: value) { return true }
                 if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: value)) { return true }
-            }
-        }
-
-        for selector in selectors where event.responds(to: selector) {
-            for value in candidates {
-                _ = event.perform(selector, with: NSNumber(value: value))
-                return true
-            }
-        }
-
-        let keys = ["travelTimeMode", "travelTimeType", "travelTimeOption"]
-        for key in keys {
-            let getter = Selector((key))
-            if event.responds(to: getter) {
-                event.setValue(NSNumber(value: candidates[0]), forKey: key)
-                return true
             }
         }
 
