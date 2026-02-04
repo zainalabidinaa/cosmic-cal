@@ -1,7 +1,6 @@
 import CoreLocation
 import EventKit
 import Foundation
-import MapKit
 import ObjectiveC.runtime
 
 enum CalendarSyncError: LocalizedError {
@@ -23,17 +22,8 @@ final class CalendarSync {
     private let eventStore = EKEventStore()
     private let locationClient = LocationClient()
 
-    struct UpsertDiagnostics: Equatable {
-        var didSetTravelRoutingMode: Bool = false
-        var didSetTravelStartLocation: Bool = false
-        var usedFallbackTravelTime: Bool = false
-    }
-
-    private(set) var lastUpsertDiagnostics = UpsertDiagnostics()
-
     private let destinationAddress = "Akutgatan 8, Lund"
     private let originFallbackAddress = "Traktörsgatan 11, Helsingborg"
-    private let fallbackTravelTime: TimeInterval = 45 * 60
 
     func requestAccessIfNeeded() async throws {
         let status = EKEventStore.authorizationStatus(for: .event)
@@ -75,8 +65,6 @@ final class CalendarSync {
     }
 
     func upsertEvent(for log: WorkLog) async throws -> String {
-        lastUpsertDiagnostics = UpsertDiagnostics()
-
         let calendar = findPreferredCalendar(named: "Arbete") ?? eventStore.defaultCalendarForNewEvents
         guard let calendar else {
             throw CalendarSyncError.noWritableCalendar
@@ -107,26 +95,15 @@ final class CalendarSync {
 
         let origin = await resolveOriginLocation()
         if let origin {
-            lastUpsertDiagnostics.didSetTravelStartLocation = setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
+            _ = setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
-        lastUpsertDiagnostics.didSetTravelRoutingMode = setTravelRoutingModeIfSupported(event: event)
+        _ = setTravelRoutingModeIfSupported(event: event)
 
-        // Compute travel time for alarm offsets, but do NOT persist a fixed travel time.
-        // This keeps Calendar's travel time UI on "Based on location" (car) rather than
-        // selecting a hardcoded minute value.
-        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin, to: structuredDestination.geoLocation, arrivalDate: log.start)
-
-        let travelTimeSecondsRawOrFallback: TimeInterval
-        if let travelTimeSecondsRaw {
-            travelTimeSecondsRawOrFallback = travelTimeSecondsRaw
-        } else {
-            lastUpsertDiagnostics.usedFallbackTravelTime = true
-            travelTimeSecondsRawOrFallback = fallbackTravelTime
-        }
-
-        let travelTimeSeconds = (travelTimeSecondsRawOrFallback / 60).rounded() * 60
-
-        applyDefaultAlarms(to: event, travelTime: travelTimeSeconds)
+        // Do NOT estimate or persist travel time.
+        // We want Calendar's UI to stay on "Based on location" (Driving), and we want
+        // the alarms to be chosen as "30 minutes before travel time" and
+        // "1 hour before travel time".
+        applyDefaultAlarms(to: event)
 
         try eventStore.save(event, span: .thisEvent, commit: true)
         if let oldEvent {
@@ -159,9 +136,9 @@ final class CalendarSync {
         structured.geoLocation = location
 
         let setterSelectors: [Selector] = [
-            Selector(("setTravelStartLocation:")),
             Selector(("setStructuredTravelStartLocation:")),
             Selector(("setStructuredStartLocation:")),
+            Selector(("setTravelStartLocation:")),
             Selector(("setStartLocation:"))
         ]
 
@@ -185,13 +162,13 @@ final class CalendarSync {
         return nil
     }
 
-    private func applyDefaultAlarms(to event: EKEvent, travelTime: TimeInterval) {
+    private func applyDefaultAlarms(to event: EKEvent) {
         // Travel-time-relative alarms (Calendar menu: "... before travel time").
-        // These offsets are relative to the event start date.
+        // When travel is enabled (start + destination + routing mode), Calendar will
+        // display these offsets relative to travel time.
         let offsets: [TimeInterval] = [
-            -(travelTime + 30 * 60),
-            -(travelTime + 1 * 60 * 60),
-            -travelTime
+            -30 * 60,
+            -60 * 60
         ]
 
         event.alarms = offsets.map { EKAlarm(relativeOffset: $0) }
@@ -212,38 +189,6 @@ final class CalendarSync {
                 }
 
                 continuation.resume(returning: coordinate)
-            }
-        }
-    }
-
-    private func estimateTravelTimeSeconds(
-        from origin: (title: String, location: CLLocation)?,
-        to destination: CLLocation?,
-        arrivalDate: Date?
-    ) async -> TimeInterval? {
-        guard let destination else {
-            return nil
-        }
-
-        let request = MKDirections.Request()
-
-        if origin?.title == "Current Location" {
-            request.source = MKMapItem.forCurrentLocation()
-        } else if let origin {
-            request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin.location.coordinate))
-        } else {
-            return nil
-        }
-
-        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
-        request.transportType = .automobile
-        request.arrivalDate = arrivalDate
-
-        let directions = MKDirections(request: request)
-        return await withCheckedContinuation { continuation in
-            directions.calculate { response, _ in
-                let best = response?.routes.min(by: { $0.expectedTravelTime < $1.expectedTravelTime })
-                continuation.resume(returning: best?.expectedTravelTime)
             }
         }
     }

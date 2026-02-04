@@ -71,15 +71,7 @@ final class WorkLogStore: ObservableObject {
             logs.sort(by: { $0.day > $1.day })
 
             try persistToDisk()
-
-            var message = "Saved and added to Calendar (Arbete)."
-            if #available(iOS 26.0, *) {
-                let diag = calendarSync.lastUpsertDiagnostics
-                if !diag.didSetTravelRoutingMode || !diag.didSetTravelStartLocation || diag.usedFallbackTravelTime {
-                    message += " Travel details may be limited on this iOS version."
-                }
-            }
-            lastSaveMessage = message
+            lastSaveMessage = "Saved and added to Calendar (Arbete)."
         } catch {
             // Still save locally even if calendar fails.
             logs.removeAll(where: { $0.dayKey == logToSave.dayKey })
