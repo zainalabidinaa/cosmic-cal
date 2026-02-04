@@ -140,7 +140,7 @@ struct LogView: View {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [Color.cyan.opacity(0.25), Color.clear],
+                        colors: [Color.purple.opacity(0.24), Color.clear],
                         center: .center,
                         startRadius: 20,
                         endRadius: 220
@@ -153,7 +153,7 @@ struct LogView: View {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [Color.mint.opacity(0.22), Color.clear],
+                        colors: [Color.indigo.opacity(0.22), Color.clear],
                         center: .center,
                         startRadius: 20,
                         endRadius: 240
@@ -171,7 +171,7 @@ struct LogView: View {
             )
 
             RadialGradient(
-                colors: [Color.mint.opacity(0.12), Color.clear],
+                colors: [Color.purple.opacity(0.14), Color.clear],
                 center: .bottomLeading,
                 startRadius: 30,
                 endRadius: 620
