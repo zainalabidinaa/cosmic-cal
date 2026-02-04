@@ -102,17 +102,19 @@ final class CalendarSync {
             location: origin?.location
         )
         _ = setTravelTimeEnabledIfSupported(event: event)
-        _ = setTravelTimeModeIfSupported(event: event)
         _ = setTravelRoutingModeIfSupported(event: event)
-        _ = setTravelTimeBasedOnLocationIfSupported(event: event)
+        let basedOnLocationApplied = setTravelTimeModeIfSupported(event: event)
+            || setTravelTimeBasedOnLocationIfSupported(event: event)
 
-        let estimatedTravelSeconds = await estimateTravelTimeSeconds(
-            from: origin,
-            to: structuredDestination.geoLocation,
-            arrivalDate: log.start
-        )
-        let travelSeconds = estimatedTravelSeconds ?? fixedTravelTimeSeconds
-        _ = setFixedTravelTimeIfSupported(event: event, seconds: travelSeconds)
+        if !basedOnLocationApplied {
+            let estimatedTravelSeconds = await estimateTravelTimeSeconds(
+                from: origin,
+                to: structuredDestination.geoLocation,
+                arrivalDate: log.start
+            )
+            let travelSeconds = estimatedTravelSeconds ?? fixedTravelTimeSeconds
+            _ = setFixedTravelTimeIfSupported(event: event, seconds: travelSeconds)
+        }
 
         // Do NOT estimate or persist travel time.
         // We want Calendar's UI to stay on "Based on location" (Driving), and we want
@@ -269,7 +271,7 @@ final class CalendarSync {
             return (title: originFallbackAddress, location: fallback)
         }
 
-        return nil
+        return (title: originFallbackAddress, location: nil)
     }
 
     private func applyDefaultAlarms(to event: EKEvent) {
