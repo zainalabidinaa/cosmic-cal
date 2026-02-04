@@ -47,8 +47,8 @@ width = int(re.search(r"pixelWidth:\s*(\d+)", info).group(1))
 height = int(re.search(r"pixelHeight:\s*(\d+)", info).group(1))
 size = min(width, height)
 
-# Crop to 85% to remove transparent margins.
-crop = max(1, int(size * 0.85))
+# Crop to 80% to remove transparent margins.
+crop = max(1, int(size * 0.80))
 subprocess.check_call(["/usr/bin/sips", "-c", str(crop), str(crop), str(base), "--out", str(out)], stdout=subprocess.DEVNULL)
 PY
 
