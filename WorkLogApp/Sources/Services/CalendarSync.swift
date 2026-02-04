@@ -95,9 +95,11 @@ final class CalendarSync {
         event.structuredLocation = structuredDestination
 
         let origin = await resolveOriginLocation()
-        if let origin {
-            _ = setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
-        }
+        _ = setTravelStartLocationIfSupported(
+            event: event,
+            title: origin?.title ?? "Current Location",
+            location: origin?.location
+        )
         _ = setTravelTimeEnabledIfSupported(event: event)
         _ = setTravelTimeModeIfSupported(event: event)
         _ = setTravelRoutingModeIfSupported(event: event)
@@ -223,13 +225,15 @@ final class CalendarSync {
     }
 
     @discardableResult
-    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) -> Bool {
+    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation?) -> Bool {
         let isCurrentLocation = (title == "Current Location")
         let structured = EKStructuredLocation(title: title)
         // Use the current coordinate to ensure travel can be enabled.
         // Even when the title is "Current Location", Calendar may require a geoLocation
         // to turn travel time on.
-        structured.geoLocation = location
+        if let location {
+            structured.geoLocation = location
+        }
 
         let setterSelectors: [Selector] = [
             Selector(("setStructuredTravelStartLocation:")),
@@ -249,7 +253,7 @@ final class CalendarSync {
         return false
     }
 
-    private func resolveOriginLocation() async -> (title: String, location: CLLocation)? {
+    private func resolveOriginLocation() async -> (title: String, location: CLLocation?)? {
         if let current = try? await locationClient.fetchLocation() {
             return (title: "Current Location", location: current)
         }
@@ -259,7 +263,7 @@ final class CalendarSync {
             return (title: "Current Location", location: fallback)
         }
 
-        return nil
+        return (title: "Current Location", location: nil)
     }
 
     private func applyDefaultAlarms(to event: EKEvent) {
