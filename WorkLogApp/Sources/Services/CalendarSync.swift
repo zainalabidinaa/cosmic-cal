@@ -161,7 +161,11 @@ final class CalendarSync {
         // We try a few likely private-style setters.
         let setters: [Selector] = [
             Selector(("setTravelTimeEnabled:")),
+            Selector(("setTravelTimeIsEnabled:")),
             Selector(("setHasTravelTime:")),
+            Selector(("setTravelTimeActive:")),
+            Selector(("setShouldIncludeTravelTime:")),
+            Selector(("setIncludeTravelTime:")),
             Selector(("setTravelTimeOn:")),
             Selector(("setIncludesTravelTime:"))
         ]
@@ -177,6 +181,7 @@ final class CalendarSync {
 
     @discardableResult
     private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) -> Bool {
+        let isCurrentLocation = (title == "Current Location")
         let structured = EKStructuredLocation(title: title)
         // Use the current coordinate to ensure travel can be enabled.
         // Even when the title is "Current Location", Calendar may require a geoLocation
@@ -191,6 +196,10 @@ final class CalendarSync {
         ]
 
         for setter in setterSelectors {
+            if isCurrentLocation {
+                if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: nil) { return true }
+            }
+
             if ObjCInvocation.safeSetOptionalObject(target: event, selector: setter, value: structured) { return true }
         }
 
