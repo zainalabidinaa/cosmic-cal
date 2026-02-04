@@ -1,0 +1,93 @@
+name: Build Unsigned (Archive + Simulator App)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-unsigned:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build unsigned iOS archive (.xcarchive)
+        run: |
+          set -euo pipefail
+
+          xcodebuild \
+            -project WorkLog.xcodeproj \
+            -scheme "WorkLog" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/build/WorkLog-unsigned.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean archive
+
+      - name: Package unsigned IPA (AltStore)
+        run: |
+          set -euo pipefail
+
+          ARCHIVE="$PWD/build/WorkLog-unsigned.xcarchive"
+          APP_DIR="$ARCHIVE/Products/Applications"
+          APP_PATH=$(find "$APP_DIR" -maxdepth 1 -type d -name '*.app' | head -n 1)
+          if [ -z "${APP_PATH}" ]; then
+            echo "No .app found in archive"
+            exit 1
+          fi
+
+          rm -rf "$PWD/build/unsigned-ipa"
+          mkdir -p "$PWD/build/unsigned-ipa/Payload"
+          ditto "$APP_PATH" "$PWD/build/unsigned-ipa/Payload/WorkLog.app"
+
+          (cd "$PWD/build/unsigned-ipa" && /usr/bin/zip -qry "$PWD/build/WorkLog-unsigned.ipa" Payload)
+
+      - name: Upload unsigned archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkLog-unsigned-xcarchive
+          path: build/WorkLog-unsigned.xcarchive
+
+      - name: Upload unsigned IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkLog-unsigned-ipa
+          path: build/WorkLog-unsigned.ipa
+
+      - name: Build unsigned Simulator app (.app)
+        run: |
+          set -euo pipefail
+
+          rm -rf build/DerivedData
+
+          xcodebuild \
+            -project WorkLog.xcodeproj \
+            -scheme "WorkLog" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$PWD/build/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+          APP_PATH=$(find "$PWD/build/DerivedData" -type d -name '*.app' | head -n 1)
+          if [ -z "${APP_PATH}" ]; then
+            echo "No .app produced"
+            exit 1
+          fi
+
+          mkdir -p "$PWD/build/simulator"
+          ditto -c -k --sequesterRsrc --keepParent "${APP_PATH}" "$PWD/build/simulator/WorkLog-sim.app.zip"
+
+      - name: Upload Simulator app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkLog-simulator-app
+          path: build/simulator/WorkLog-sim.app.zip
