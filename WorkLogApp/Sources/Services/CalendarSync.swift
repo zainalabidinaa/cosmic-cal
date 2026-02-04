@@ -24,7 +24,7 @@ final class CalendarSync {
 
     private let destinationAddress = "Akutgatan 8, Lund"
     private let originFallbackAddress = "Traktörsgatan 11, Helsingborg"
-    private let fixedTravelTimeSeconds: TimeInterval = 60
+    private let fixedTravelTimeSeconds: TimeInterval = 30 * 60
 
     func requestAccessIfNeeded() async throws {
         let status = EKEventStore.authorizationStatus(for: .event)
