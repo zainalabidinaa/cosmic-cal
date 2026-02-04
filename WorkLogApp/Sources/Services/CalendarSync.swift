@@ -24,6 +24,7 @@ final class CalendarSync {
 
     private let destinationAddress = "Akutgatan 8, Lund"
     private let originFallbackAddress = "Traktörsgatan 11, Helsingborg"
+    private let fixedTravelTimeSeconds: TimeInterval = 60
 
     func requestAccessIfNeeded() async throws {
         let status = EKEventStore.authorizationStatus(for: .event)
@@ -102,6 +103,9 @@ final class CalendarSync {
         _ = setTravelRoutingModeIfSupported(event: event)
         _ = setTravelTimeBasedOnLocationIfSupported(event: event)
 
+        // Best-effort: set fixed travel time to force Travel Time ON.
+        _ = setFixedTravelTimeIfSupported(event: event, seconds: fixedTravelTimeSeconds)
+
         // Do NOT estimate or persist travel time.
         // We want Calendar's UI to stay on "Based on location" (Driving), and we want
         // the alarms to be chosen as "30 minutes before travel time" and
@@ -171,6 +175,23 @@ final class CalendarSync {
                 if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: value) { return true }
                 if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: value)) { return true }
             }
+        }
+
+        return false
+    }
+
+    @discardableResult
+    private func setFixedTravelTimeIfSupported(event: EKEvent, seconds: TimeInterval) -> Bool {
+        let selectors: [Selector] = [
+            Selector(("setTravelTime:")),
+            Selector(("setTravelTimeInterval:")),
+            Selector(("setTravelTimeInSeconds:"))
+        ]
+
+        for selector in selectors {
+            if ObjCInvocation.safeSetDouble(target: event, selector: selector, value: seconds) { return true }
+            if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: Int(seconds)) { return true }
+            if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: seconds)) { return true }
         }
 
         return false
@@ -337,6 +358,38 @@ private enum ObjCInvocation {
             typealias Fn = @convention(c) (AnyObject, Selector, Int8) -> Void
             let fn = unsafeBitCast(imp, to: Fn.self)
             fn(target, selector, value ? 1 : 0)
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func safeSetDouble(target: NSObject, selector: Selector, value: Double) -> Bool {
+        guard target.responds(to: selector),
+              let method = class_getInstanceMethod(type(of: target), selector)
+        else {
+            return false
+        }
+
+        guard isVoidReturn(method: method) else {
+            return false
+        }
+
+        let argType = copyArgumentType(method: method, index: 2)
+        guard let first = argType.first else { return false }
+
+        switch first {
+        case "d":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Double) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, value)
+            return true
+        case "f":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Float) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, Float(value))
             return true
         default:
             return false
