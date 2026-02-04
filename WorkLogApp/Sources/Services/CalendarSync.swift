@@ -98,6 +98,7 @@ final class CalendarSync {
             _ = setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
         _ = setTravelTimeEnabledIfSupported(event: event)
+        _ = setTravelTimeModeIfSupported(event: event)
         _ = setTravelRoutingModeIfSupported(event: event)
         _ = setTravelTimeBasedOnLocationIfSupported(event: event)
 
@@ -149,6 +150,27 @@ final class CalendarSync {
             if ObjCInvocation.safeSetBool(target: event, selector: selector, value: true) { return true }
             if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: 1) { return true }
             if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: true)) { return true }
+        }
+
+        return false
+    }
+
+    @discardableResult
+    private func setTravelTimeModeIfSupported(event: EKEvent) -> Bool {
+        // Best-effort: attempt to select "Based on location" travel-time mode.
+        // Values are unknown; we try a couple common integer options.
+        let selectors: [Selector] = [
+            Selector(("setTravelTimeMode:")),
+            Selector(("setTravelTimeType:")),
+            Selector(("setTravelTimeOption:"))
+        ]
+
+        let candidates = [1, 2]
+        for selector in selectors {
+            for value in candidates {
+                if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: value) { return true }
+                if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: value)) { return true }
+            }
         }
 
         return false
