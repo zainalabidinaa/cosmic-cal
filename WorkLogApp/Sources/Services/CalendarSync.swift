@@ -114,7 +114,8 @@ final class CalendarSync {
                 to: structuredDestination.geoLocation,
                 arrivalDate: log.start
             )
-            let travelSeconds = estimatedTravelSeconds ?? fixedTravelTimeSeconds
+            let rawTravelSeconds = estimatedTravelSeconds ?? fixedTravelTimeSeconds
+            let travelSeconds = (rawTravelSeconds / 60).rounded() * 60
             _ = setFixedTravelTimeIfSupported(event: event, seconds: travelSeconds)
         }
 
