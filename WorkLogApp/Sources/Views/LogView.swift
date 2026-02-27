@@ -95,33 +95,28 @@ struct LogView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 0) {
-                    Divider().opacity(0.3)
-                    Button {
-                        guard !isSaving else { return }
-                        Task { await save() }
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isSaving {
-                                ProgressView()
-                            } else {
-                                Image(systemName: "checkmark.seal.fill")
-                            }
-                            Text(isSaving ? "Saving…" : "Save Shift")
-                                .fontWeight(.semibold)
+                Button {
+                    guard !isSaving else { return }
+                    Task { await save() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "checkmark.seal.fill")
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        Text(isSaving ? "Saving…" : "Save Shift")
+                            .fontWeight(.semibold)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.mint)
-                    .controlSize(.large)
-                    .disabled(isSaving)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .accessibilityLabel(isSaving ? "Saving shift" : "Save shift")
+                    .frame(maxWidth: .infinity)
                 }
-                .background(.ultraThinMaterial)
+                .buttonStyle(.glass)
+                .tint(.mint)
+                .controlSize(.large)
+                .disabled(isSaving)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .accessibilityLabel(isSaving ? "Saving shift" : "Save shift")
             }
             .navigationTitle(settings.eventTitle)
             .navigationBarTitleDisplayMode(.large)
@@ -217,21 +212,9 @@ private struct TemplateChip: View {
                 .foregroundStyle(isActive ? .mint : .primary)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
-                .background(
-                    isActive
-                        ? AnyShapeStyle(Color.mint.opacity(0.15))
-                        : AnyShapeStyle(.ultraThinMaterial),
-                    in: .capsule
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            isActive ? Color.mint.opacity(0.4) : .white.opacity(0.08),
-                            lineWidth: 1
-                        )
-                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glass)
+        .tint(isActive ? .mint : nil)
         .accessibilityLabel("Shift \(label)")
     }
 }

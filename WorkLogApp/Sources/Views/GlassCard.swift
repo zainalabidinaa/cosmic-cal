@@ -10,10 +10,6 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content
             .padding(16)
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: 20))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-            )
+            .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

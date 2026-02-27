@@ -8,73 +8,68 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                DarkBackground()
+            Form {
+                Section {
+                    TextField("Apple ID Email", text: $settings.iCloudEmail)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
 
-                Form {
-                    Section {
-                        TextField("Apple ID Email", text: $settings.iCloudEmail)
-                            .textContentType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.emailAddress)
-
-                        SecureField("App-Specific Password", text: $appPassword)
-                            .textContentType(.password)
-                            .onChange(of: appPassword) { _, newValue in
-                                guard !settings.iCloudEmail.isEmpty else { return }
-                                if newValue.isEmpty {
-                                    KeychainHelper.deletePassword(account: settings.iCloudEmail)
-                                } else {
-                                    KeychainHelper.savePassword(newValue, account: settings.iCloudEmail)
-                                }
+                    SecureField("App-Specific Password", text: $appPassword)
+                        .textContentType(.password)
+                        .onChange(of: appPassword) { _, newValue in
+                            guard !settings.iCloudEmail.isEmpty else { return }
+                            if newValue.isEmpty {
+                                KeychainHelper.deletePassword(account: settings.iCloudEmail)
+                            } else {
+                                KeychainHelper.savePassword(newValue, account: settings.iCloudEmail)
                             }
-
-                        if settings.calDAVConfigured {
-                            Label("CalDAV enabled — travel time included.", systemImage: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.green)
-                        } else {
-                            Text("Enter your Apple ID and an app-specific password to sync with travel time via CalDAV.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                         }
-                    } header: {
-                        Text("iCloud CalDAV")
+
+                    if settings.calDAVConfigured {
+                        Label("CalDAV enabled — travel time included.", systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    } else {
+                        Text("Enter your Apple ID and an app-specific password to sync with travel time via CalDAV.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("iCloud CalDAV")
+                }
+
+                Section("Calendar Event") {
+                    TextField("Event Title", text: $settings.eventTitle)
+                    TextField("Calendar Name", text: $settings.calendarName)
+                }
+
+                Section("Location") {
+                    TextField("Destination Address", text: $settings.destinationAddress)
+                    TextField("Fallback Origin Address", text: $settings.originFallbackAddress)
+                }
+
+                Section("Shift Templates") {
+                    ForEach(settings.shiftTemplates) { template in
+                        Text(template.label)
+                    }
+                    .onDelete { offsets in
+                        settings.shiftTemplates.remove(atOffsets: offsets)
                     }
 
-                    Section("Calendar Event") {
-                        TextField("Event Title", text: $settings.eventTitle)
-                        TextField("Calendar Name", text: $settings.calendarName)
-                    }
-
-                    Section("Location") {
-                        TextField("Destination Address", text: $settings.destinationAddress)
-                        TextField("Fallback Origin Address", text: $settings.originFallbackAddress)
-                    }
-
-                    Section("Shift Templates") {
-                        ForEach(settings.shiftTemplates) { template in
-                            Text(template.label)
-                        }
-                        .onDelete { offsets in
-                            settings.shiftTemplates.remove(atOffsets: offsets)
-                        }
-
-                        Button {
-                            showingAddTemplate = true
-                        } label: {
-                            Label("Add Template", systemImage: "plus")
-                        }
-                    }
-
-                    Section {
-                        Button("Reset to Defaults", role: .destructive) {
-                            settings.resetToDefaults()
-                            appPassword = ""
-                        }
+                    Button {
+                        showingAddTemplate = true
+                    } label: {
+                        Label("Add Template", systemImage: "plus")
                     }
                 }
-                .scrollContentBackground(.hidden)
+
+                Section {
+                    Button("Reset to Defaults", role: .destructive) {
+                        settings.resetToDefaults()
+                        appPassword = ""
+                    }
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
