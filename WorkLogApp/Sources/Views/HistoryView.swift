@@ -62,6 +62,7 @@ struct HistoryView: View {
                                     }
                                     .buttonStyle(.plain)
                                 }
+                                .adaptiveGlassUnion(id: "historyrows", namespace: summaryNamespace)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))

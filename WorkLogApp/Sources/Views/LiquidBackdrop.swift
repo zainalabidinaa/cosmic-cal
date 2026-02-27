@@ -44,6 +44,24 @@ struct LiquidBackdrop: View {
                 .frame(width: 240, height: 120)
                 .offset(x: 0, y: drift ? 420 : 390)
                 .blur(radius: 30)
+
+#if EXPERIMENTAL_LIQUID_GLASS
+            if #available(iOS 26.0, *) {
+                Ellipse()
+                    .fill(
+                        LinearGradient(
+                            colors: [.white.opacity(0.18), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 460, height: 140)
+                    .rotationEffect(.degrees(-12))
+                    .offset(x: drift ? -40 : 20, y: drift ? -110 : -150)
+                    .blur(radius: 24)
+                    .blendMode(.screen)
+            }
+#endif
         }
         .ignoresSafeArea()
         .onAppear {

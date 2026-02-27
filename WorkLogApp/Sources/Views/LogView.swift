@@ -12,6 +12,7 @@ struct LogView: View {
     @State private var errorHapticTrigger = 0
     @State private var dismissTask: Task<Void, Never>?
     @State private var animateIn = false
+    @Namespace private var logSurfaceNamespace
     @Namespace private var templateNamespace
 
     var body: some View {
@@ -36,6 +37,7 @@ struct LogView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
 
                         GlassCard(style: .elevated) {
                             VStack(alignment: .leading, spacing: 12) {
@@ -57,6 +59,7 @@ struct LogView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
 
                         if !settings.shiftTemplates.isEmpty {
                             GlassCard {
@@ -97,6 +100,7 @@ struct LogView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
 
                         if let message = store.lastSaveMessage {
                             GlassCard(style: .subtle) {

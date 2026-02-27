@@ -5,6 +5,7 @@ struct SettingsView: View {
     @State private var showingAddTemplate = false
     @State private var appPassword = ""
     @State private var passwordLoaded = false
+    @Namespace private var settingsNamespace
 
     var body: some View {
         NavigationStack {
@@ -21,6 +22,7 @@ struct SettingsView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         SettingsGlassSection(title: "iCloud CalDAV", icon: "icloud") {
                             SettingsTextFieldRow(title: "Apple ID Email") {
@@ -53,6 +55,7 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         SettingsGlassSection(title: "Calendar Event", icon: "calendar.badge.clock") {
                             SettingsTextFieldRow(title: "Event Title") {
@@ -62,6 +65,7 @@ struct SettingsView: View {
                                 TextField("Arbete", text: $settings.calendarName)
                             }
                         }
+                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         SettingsGlassSection(title: "Location", icon: "location") {
                             SettingsTextFieldRow(title: "Destination") {
@@ -71,6 +75,7 @@ struct SettingsView: View {
                                 TextField("Origin fallback", text: $settings.originFallbackAddress)
                             }
                         }
+                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         SettingsGlassSection(title: "Shift Templates", icon: "clock.badge") {
                             ForEach(settings.shiftTemplates) { template in
@@ -98,6 +103,7 @@ struct SettingsView: View {
                             .adaptivePrimaryButtonStyle()
                             .tint(.teal)
                         }
+                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         GlassCard(style: .subtle) {
                             Button("Reset to Defaults", role: .destructive) {

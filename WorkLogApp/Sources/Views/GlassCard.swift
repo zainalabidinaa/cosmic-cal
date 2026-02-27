@@ -37,6 +37,17 @@ struct GlassCard<Content: View>: View {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
                     }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.16), .clear],
+                                    startPoint: .topLeading,
+                                    endPoint: .center
+                                )
+                            )
+                            .blendMode(.screen)
+                    }
             } else {
                 fallbackCard
             }
