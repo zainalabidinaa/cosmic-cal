@@ -28,6 +28,8 @@ struct WorkLogApp: App {
                 }
             }
             .tint(.mint)
+            .preferredColorScheme(.dark)
+            .toolbarColorScheme(.dark, for: .tabBar, .navigationBar)
             .environmentObject(store)
             .environmentObject(settings)
         }

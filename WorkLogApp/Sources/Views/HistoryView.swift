@@ -11,7 +11,9 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                DarkBackground()
+
                 if store.logs.isEmpty {
                     ContentUnavailableView(
                         "No Shifts Yet",
@@ -21,28 +23,39 @@ struct HistoryView: View {
                 } else {
                     List {
                         Section {
-                            HStack {
-                                SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
-                                Spacer()
-                                SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
+                            GlassCard {
+                                HStack(spacing: 0) {
+                                    SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
+                                    Spacer()
+                                    SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
+                                }
                             }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                             .accessibilityElement(children: .combine)
                         }
 
-                        Section("Shifts") {
+                        Section {
                             ForEach(store.logs) { log in
-                                Button {
-                                    store.requestEdit(day: log.day)
-                                    selectedTab = .log
-                                } label: {
-                                    HistoryRow(
-                                        day: Formatters.day.string(from: log.day),
-                                        time: "\(Formatters.time.string(from: log.start)) – \(Formatters.time.string(from: log.end))",
-                                        duration: log.durationLabel
-                                    )
+                                GlassCard {
+                                    Button {
+                                        store.requestEdit(day: log.day)
+                                        selectedTab = .log
+                                    } label: {
+                                        HistoryRow(
+                                            day: Formatters.day.string(from: log.day),
+                                            time: "\(Formatters.time.string(from: log.start)) – \(Formatters.time.string(from: log.end))",
+                                            duration: log.durationLabel
+                                        )
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .tint(.primary)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button("Delete", role: .destructive) {
                                         logToDelete = log
                                         showDeleteConfirmation = true
@@ -51,9 +64,12 @@ struct HistoryView: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle(settings.eventTitle)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !store.logs.isEmpty {
@@ -150,6 +166,10 @@ private struct HistoryRow: View {
             Text(duration)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(.mint)
+
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)

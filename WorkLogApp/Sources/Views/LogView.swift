@@ -14,85 +14,121 @@ struct LogView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    DatePicker("Day", selection: $day, displayedComponents: .date)
-                        .onChange(of: day) { _, newValue in loadForDay(newValue) }
-                }
+            ZStack {
+                DarkBackground()
 
-                if !settings.shiftTemplates.isEmpty {
-                    Section("Templates") {
-                        ForEach(settings.shiftTemplates) { template in
-                            Button {
-                                applyTemplate(template)
-                            } label: {
-                                HStack {
-                                    Text(template.label)
-                                        .foregroundStyle(.primary)
-                                    Spacer()
-                                    if isTemplateActive(template) {
-                                        Image(systemName: "checkmark")
-                                            .foregroundStyle(.mint)
-                                            .fontWeight(.semibold)
+                ScrollView {
+                    VStack(spacing: 16) {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label("Shift", systemImage: "calendar")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+
+                                DatePicker("Day", selection: $day, displayedComponents: .date)
+                                    .datePickerStyle(.compact)
+                                    .onChange(of: day) { _, newValue in loadForDay(newValue) }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        if !settings.shiftTemplates.isEmpty {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Label("Templates", systemImage: "clock.badge.checkmark")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.secondary)
+
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            ForEach(settings.shiftTemplates) { template in
+                                                TemplateChip(
+                                                    template.label,
+                                                    isActive: isTemplateActive(template)
+                                                ) {
+                                                    applyTemplate(template)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .accessibilityLabel("Shift \(template.label)")
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label("Times", systemImage: "clock")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+
+                                DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
+                                    .datePickerStyle(.compact)
+
+                                DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
+                                    .datePickerStyle(.compact)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        if let message = store.lastSaveMessage {
+                            GlassCard {
+                                Label(message, systemImage: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                    .font(.subheadline)
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
+                        if let error = store.lastErrorMessage {
+                            GlassCard {
+                                Label(error, systemImage: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                    .font(.subheadline)
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
-                }
-
-                Section {
-                    DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
-                    DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
-                }
-
-                if let message = store.lastSaveMessage {
-                    Section {
-                        Label(message, systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .font(.subheadline)
-                    }
-                }
-
-                if let error = store.lastErrorMessage {
-                    Section {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                            .font(.subheadline)
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 100)
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button {
-                    guard !isSaving else { return }
-                    Task { await save() }
-                } label: {
-                    HStack(spacing: 8) {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "checkmark.seal.fill")
+                VStack(spacing: 0) {
+                    Divider().opacity(0.3)
+                    Button {
+                        guard !isSaving else { return }
+                        Task { await save() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isSaving {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "checkmark.seal.fill")
+                            }
+                            Text(isSaving ? "Saving…" : "Save Shift")
+                                .fontWeight(.semibold)
                         }
-                        Text(isSaving ? "Saving…" : "Save Shift")
-                            .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.mint)
+                    .controlSize(.large)
+                    .disabled(isSaving)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .accessibilityLabel(isSaving ? "Saving shift" : "Save shift")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.mint)
-                .controlSize(.large)
-                .disabled(isSaving)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 8)
-                .accessibilityLabel(isSaving ? "Saving shift" : "Save shift")
+                .background(.ultraThinMaterial)
             }
             .navigationTitle(settings.eventTitle)
+            .navigationBarTitleDisplayMode(.large)
             .sensoryFeedback(.success, trigger: successHapticTrigger)
             .sensoryFeedback(.error, trigger: errorHapticTrigger)
-            .animation(.default, value: store.lastSaveMessage)
-            .animation(.default, value: store.lastErrorMessage)
+            .animation(.easeInOut(duration: 0.3), value: store.lastSaveMessage)
+            .animation(.easeInOut(duration: 0.3), value: store.lastErrorMessage)
             .onAppear { loadForDay(day) }
             .onChange(of: store.requestedEditDay) { _, newValue in
                 guard let newValue else { return }
@@ -158,5 +194,44 @@ struct LogView: View {
             store.lastSaveMessage = nil
             store.lastErrorMessage = nil
         }
+    }
+}
+
+// MARK: - Template Chip
+
+private struct TemplateChip: View {
+    private let label: String
+    private let isActive: Bool
+    private let action: () -> Void
+
+    init(_ label: String, isActive: Bool, action: @escaping () -> Void) {
+        self.label = label
+        self.isActive = isActive
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(isActive ? .mint : .primary)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 14)
+                .background(
+                    isActive
+                        ? AnyShapeStyle(Color.mint.opacity(0.15))
+                        : AnyShapeStyle(.ultraThinMaterial),
+                    in: .capsule
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(
+                            isActive ? Color.mint.opacity(0.4) : .white.opacity(0.08),
+                            lineWidth: 1
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Shift \(label)")
     }
 }
