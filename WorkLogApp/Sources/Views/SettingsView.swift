@@ -58,7 +58,6 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         SettingsGlassSection(title: "Calendar Event", icon: "calendar.badge.clock") {
                             SettingsTextFieldRow(title: "Event Title") {
@@ -87,7 +86,6 @@ struct SettingsView: View {
                                 }
                             }
                         }
-                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         SettingsGlassSection(title: "Location", icon: "location") {
                             SettingsTextFieldRow(title: "Destination") {
@@ -97,7 +95,6 @@ struct SettingsView: View {
                                 TextField("Origin fallback", text: $settings.originFallbackAddress)
                             }
                         }
-                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         SettingsGlassSection(title: "Shift Templates", icon: "clock.badge") {
                             ForEach(settings.shiftTemplates) { template in
@@ -125,7 +122,6 @@ struct SettingsView: View {
                             .adaptivePrimaryButtonStyle()
                             .tint(.orange)
                         }
-                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
                         GlassCard(style: .subtle) {
                             Button("Reset to Defaults", role: .destructive) {
@@ -135,7 +131,6 @@ struct SettingsView: View {
                             .frame(maxWidth: .infinity)
                             .adaptiveSecondaryButtonStyle()
                         }
-                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
                     }
                 }
                 .padding(.horizontal, 16)

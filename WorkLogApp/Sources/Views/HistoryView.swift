@@ -31,12 +31,30 @@ struct HistoryView: View {
                         Section {
                             AdaptiveGlassGroup(spacing: 12) {
                                 GlassCard(style: .elevated) {
-                                    HStack(spacing: 0) {
-                                        SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
-                                            .adaptiveGlassUnion(id: "historysummary", namespace: summaryNamespace)
-                                        Spacer()
-                                        SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
-                                            .adaptiveGlassUnion(id: "historysummary", namespace: summaryNamespace)
+                                    VStack(spacing: 12) {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text("Shift Archive")
+                                                    .font(.caption.weight(.medium))
+                                                    .foregroundStyle(.white.opacity(0.75))
+                                                Text("\(store.logs.count) logs")
+                                                    .font(.title3.weight(.bold))
+                                            }
+                                            Spacer()
+                                            Text(formatHours(totalHours))
+                                                .font(.title2.weight(.bold).monospacedDigit())
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(.white.opacity(0.1), in: Capsule(style: .continuous))
+                                        }
+
+                                        HStack(spacing: 0) {
+                                            SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
+                                                .adaptiveGlassUnion(id: "historysummary", namespace: summaryNamespace)
+                                            Spacer()
+                                            SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
+                                                .adaptiveGlassUnion(id: "historysummary", namespace: summaryNamespace)
+                                        }
                                     }
                                 }
                             }
@@ -124,6 +142,10 @@ struct HistoryView: View {
     private var hoursThisMonth: Double {
         let start = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
         return store.logs.filter { $0.day >= start }.reduce(0) { $0 + $1.duration / 3600 }
+    }
+
+    private var totalHours: Double {
+        store.logs.reduce(0) { $0 + $1.duration / 3600 }
     }
 
     private func formatHours(_ hours: Double) -> String {

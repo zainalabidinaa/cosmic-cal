@@ -37,7 +37,6 @@ struct LogView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
 
                         GlassCard(style: .elevated) {
                             VStack(alignment: .leading, spacing: 12) {
@@ -53,13 +52,13 @@ struct LogView: View {
                                         .foregroundStyle(.primary)
                                 }
 
-                                DatePicker("Day", selection: $day, displayedComponents: .date)
-                                    .datePickerStyle(.compact)
-                                    .onChange(of: day) { _, newValue in loadForDay(newValue) }
+                            DatePicker("Day", selection: $day, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                                .tint(.orange)
+                                .onChange(of: day) { _, newValue in loadForDay(newValue) }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
 
                         if !settings.shiftTemplates.isEmpty {
                             GlassCard {
@@ -94,13 +93,14 @@ struct LogView: View {
 
                                 DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
                                     .datePickerStyle(.compact)
+                                    .tint(.orange)
 
                                 DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
                                     .datePickerStyle(.compact)
+                                    .tint(.orange)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
 
                         if let message = store.lastSaveMessage {
                             GlassCard(style: .subtle) {
@@ -170,6 +170,14 @@ struct LogView: View {
                         .padding(.vertical, 6)
                         .background(.white.opacity(0.12), in: Capsule(style: .continuous))
                         .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Text(Formatters.day.string(from: day))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(.white.opacity(0.08), in: Capsule(style: .continuous))
                 }
             }
             .sensoryFeedback(.success, trigger: successHapticTrigger)
