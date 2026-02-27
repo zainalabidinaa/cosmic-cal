@@ -22,7 +22,7 @@ echo "Xcode $XCODE_VER — OK"
 echo "Generating Xcode project..."
 xcodegen generate --spec project.yml
 
-DESTINATION="${1:-platform=iOS Simulator,name=iPhone 16 Pro}"
+DESTINATION="${1:-platform=iOS,name=Zain Alabidin's iPhone}"
 
 echo "Building for: $DESTINATION"
 xcodebuild \
@@ -30,11 +30,13 @@ xcodebuild \
     -scheme WorkLog \
     -configuration Debug \
     -destination "$DESTINATION" \
+    -allowProvisioningUpdates \
     build | xcpretty 2>/dev/null || xcodebuild \
     -project WorkLog.xcodeproj \
     -scheme WorkLog \
     -configuration Debug \
     -destination "$DESTINATION" \
+    -allowProvisioningUpdates \
     build
 
 echo "Build succeeded."
