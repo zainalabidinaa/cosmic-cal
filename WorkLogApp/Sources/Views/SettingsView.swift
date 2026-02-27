@@ -73,7 +73,7 @@ struct SettingsView: View {
                                 } label: {
                                     Image(systemName: "trash")
                                 }
-                                .buttonStyle(.bordered)
+                                .adaptiveSecondaryButtonStyle()
                             }
                         }
 
@@ -83,7 +83,7 @@ struct SettingsView: View {
                             Label("Add Template", systemImage: "plus")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .adaptivePrimaryButtonStyle()
                         .tint(.teal)
                     }
 
@@ -93,7 +93,7 @@ struct SettingsView: View {
                             appPassword = ""
                         }
                         .frame(maxWidth: .infinity)
-                        .buttonStyle(.bordered)
+                        .adaptiveSecondaryButtonStyle()
                     }
                 }
                 .padding(.horizontal, 16)

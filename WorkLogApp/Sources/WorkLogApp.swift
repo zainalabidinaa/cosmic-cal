@@ -28,6 +28,7 @@ struct WorkLogApp: App {
                 }
             }
             .tint(.teal)
+            .adaptiveTabBarBehavior()
             .background {
                 LiquidBackdrop()
             }

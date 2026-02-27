@@ -27,6 +27,26 @@ struct GlassCard<Content: View>: View {
     }
 
     var body: some View {
+        Group {
+#if EXPERIMENTAL_LIQUID_GLASS
+            if #available(iOS 26.0, *) {
+                content
+                    .padding(16)
+                    .glassEffect(liquidGlass, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
+                    }
+            } else {
+                fallbackCard
+            }
+#else
+            fallbackCard
+#endif
+        }
+    }
+
+    private var fallbackCard: some View {
         content
             .padding(16)
             .background(backgroundStyle, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -35,6 +55,20 @@ struct GlassCard<Content: View>: View {
                     .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
             }
     }
+
+#if EXPERIMENTAL_LIQUID_GLASS
+    @available(iOS 26.0, *)
+    private var liquidGlass: Glass {
+        switch style {
+        case .regular:
+            return .regular
+        case .elevated:
+            return .regular.tint(.teal.opacity(0.18))
+        case .subtle:
+            return .clear
+        }
+    }
+#endif
 
     private var backgroundStyle: AnyShapeStyle {
         switch style {

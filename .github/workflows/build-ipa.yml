@@ -12,11 +12,43 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    name: Build IPA (${{ matrix.lane }})
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.allow_failure }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: stable
+            runner: macos-15
+            xcode: "16.4"
+            deployment_target: "18.0"
+            swift_flags: "$(inherited)"
+            artifact_name: WorkLog-ipa
+            ipa_name: WorkLog.ipa
+            allow_failure: false
+          - lane: experimental
+            runner: macos-latest
+            xcode: latest
+            deployment_target: "26.0"
+            swift_flags: "$(inherited) -DEXPERIMENTAL_LIQUID_GLASS"
+            artifact_name: WorkLog-ipa-experimental
+            ipa_name: WorkLog-experimental.ipa
+            allow_failure: true
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ matrix.xcode }}
+
+      - name: Show active Xcode and SDKs
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -41,6 +73,8 @@ jobs:
             -derivedDataPath build \
             MARKETING_VERSION=1.0 \
             CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER \
+            IPHONEOS_DEPLOYMENT_TARGET=${{ matrix.deployment_target }} \
+            OTHER_SWIFT_FLAGS='${{ matrix.swift_flags }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -56,13 +90,13 @@ jobs:
           fi
 
           echo "App path: $APP_PATH"
-          rm -rf Payload WorkLog.ipa
+          rm -rf Payload "${{ matrix.ipa_name }}"
           mkdir -p Payload
           /usr/bin/ditto "$APP_PATH" "Payload/WorkLog.app"
-          /usr/bin/zip -qry WorkLog.ipa Payload
+          /usr/bin/zip -qry "${{ matrix.ipa_name }}" Payload
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WorkLog-ipa
-          path: WorkLog.ipa
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.ipa_name }}
