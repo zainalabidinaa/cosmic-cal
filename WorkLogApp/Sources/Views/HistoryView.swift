@@ -8,7 +8,6 @@ struct HistoryView: View {
 
     @State private var logToDelete: WorkLog?
     @State private var showDeleteConfirmation = false
-    @Namespace private var summaryNamespace
 
     var body: some View {
         NavigationStack {
@@ -29,15 +28,11 @@ struct HistoryView: View {
                 } else {
                     List {
                         Section {
-                            GlassEffectContainer(spacing: 12) {
-                                GlassCard(style: .elevated) {
-                                    HStack(spacing: 0) {
-                                        SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
-                                            .glassEffectUnion(id: "summary", namespace: summaryNamespace)
-                                        Spacer()
-                                        SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
-                                            .glassEffectUnion(id: "summary", namespace: summaryNamespace)
-                                    }
+                            GlassCard(style: .elevated) {
+                                HStack(spacing: 0) {
+                                    SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
+                                    Spacer()
+                                    SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
                                 }
                             }
                             .listRowBackground(Color.clear)
@@ -92,7 +87,7 @@ struct HistoryView: View {
                         ) {
                             Image(systemName: "square.and.arrow.up")
                         }
-                        .buttonStyle(.glassProminent)
+                        .buttonStyle(.borderedProminent)
                         .tint(.teal)
                     }
                 }

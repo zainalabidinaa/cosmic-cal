@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>LMB Lund</string>
+	<string>labmedicin</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>LMBLund</string>
+	<string>labmedicin</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -39,11 +39,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCalendarsUsageDescription</key>
-	<string>LMB Lund adds your shifts to your calendar.</string>
+	<string>labmedicin adds your shifts to your calendar.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>LMB Lund needs full calendar access to create and update shift events with travel time.</string>
+	<string>labmedicin needs full calendar access to create and update shift events with travel time.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Used to calculate travel time to LMB Lund for calendar alerts.</string>
+	<string>Used to calculate travel time for labmedicin calendar alerts.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

@@ -5,17 +5,6 @@ enum GlassCardStyle {
     case elevated
     case subtle
 
-    var glass: Glass {
-        switch self {
-        case .regular:
-            return .regular
-        case .elevated:
-            return .regular.tint(.teal.opacity(0.14))
-        case .subtle:
-            return .clear
-        }
-    }
-
     var strokeOpacity: Double {
         switch self {
         case .regular:
@@ -40,10 +29,21 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content
             .padding(16)
-            .glassEffect(style.glass, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(backgroundStyle, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
             }
+    }
+
+    private var backgroundStyle: AnyShapeStyle {
+        switch style {
+        case .regular:
+            return AnyShapeStyle(.ultraThinMaterial)
+        case .elevated:
+            return AnyShapeStyle(Color.teal.opacity(0.12))
+        case .subtle:
+            return AnyShapeStyle(Color.white.opacity(0.06))
+        }
     }
 }

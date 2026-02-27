@@ -11,91 +11,87 @@ struct LogView: View {
     @State private var successHapticTrigger = 0
     @State private var errorHapticTrigger = 0
     @State private var dismissTask: Task<Void, Never>?
-    @Namespace private var templateNamespace
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                GlassEffectContainer(spacing: 18) {
-                    VStack(spacing: 16) {
-                        GlassCard(style: .elevated) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Label("Shift", systemImage: "calendar")
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.secondary)
+                VStack(spacing: 16) {
+                    GlassCard(style: .elevated) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Label("Shift", systemImage: "calendar")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
 
-                                    Spacer()
+                                Spacer()
 
-                                    Text(durationPreview)
-                                        .font(.subheadline.weight(.bold).monospacedDigit())
-                                        .foregroundStyle(.primary)
-                                }
-
-                                DatePicker("Day", selection: $day, displayedComponents: .date)
-                                    .datePickerStyle(.compact)
-                                    .onChange(of: day) { _, newValue in loadForDay(newValue) }
+                                Text(durationPreview)
+                                    .font(.subheadline.weight(.bold).monospacedDigit())
+                                    .foregroundStyle(.primary)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            DatePicker("Day", selection: $day, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                                .onChange(of: day) { _, newValue in loadForDay(newValue) }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
 
-                        if !settings.shiftTemplates.isEmpty {
-                            GlassCard {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Label("Templates", systemImage: "clock.badge.checkmark")
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.secondary)
+                    if !settings.shiftTemplates.isEmpty {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label("Templates", systemImage: "clock.badge.checkmark")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
 
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
-                                            ForEach(settings.shiftTemplates) { template in
-                                                TemplateChip(
-                                                    template.label,
-                                                    isActive: isTemplateActive(template),
-                                                    namespace: templateNamespace
-                                                ) {
-                                                    applyTemplate(template)
-                                                }
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(settings.shiftTemplates) { template in
+                                            TemplateChip(
+                                                template.label,
+                                                isActive: isTemplateActive(template)
+                                            ) {
+                                                applyTemplate(template)
                                             }
                                         }
                                     }
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Label("Times", systemImage: "clock")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-
-                                DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
-                                    .datePickerStyle(.compact)
-
-                                DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
-                                    .datePickerStyle(.compact)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                    }
 
-                        if let message = store.lastSaveMessage {
-                            GlassCard(style: .subtle) {
-                                Label(message, systemImage: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .font(.subheadline.weight(.medium))
-                            }
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                        }
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Times", systemImage: "clock")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
 
-                        if let error = store.lastErrorMessage {
-                            GlassCard(style: .subtle) {
-                                Label(error, systemImage: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                                    .font(.subheadline.weight(.medium))
-                            }
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
+                                .datePickerStyle(.compact)
+
+                            DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
+                                .datePickerStyle(.compact)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if let message = store.lastSaveMessage {
+                        GlassCard(style: .subtle) {
+                            Label(message, systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
+                    if let error = store.lastErrorMessage {
+                        GlassCard(style: .subtle) {
+                            Label(error, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
                 .padding(.horizontal, 16)
@@ -119,7 +115,7 @@ struct LogView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .tint(.teal)
                 .disabled(isSaving)
@@ -224,13 +220,11 @@ struct LogView: View {
 private struct TemplateChip: View {
     private let label: String
     private let isActive: Bool
-    private let namespace: Namespace.ID
     private let action: () -> Void
 
-    init(_ label: String, isActive: Bool, namespace: Namespace.ID, action: @escaping () -> Void) {
+    init(_ label: String, isActive: Bool, action: @escaping () -> Void) {
         self.label = label
         self.isActive = isActive
-        self.namespace = namespace
         self.action = action
     }
 
@@ -240,10 +234,17 @@ private struct TemplateChip: View {
                 .font(.subheadline.weight(.medium))
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
+                .foregroundStyle(isActive ? .white : .primary)
+                .background(
+                    isActive ? Color.teal.opacity(0.75) : Color.white.opacity(0.12),
+                    in: Capsule(style: .continuous)
+                )
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(.white.opacity(isActive ? 0.18 : 0.1), lineWidth: 1)
+                }
         }
-        .buttonStyle(isActive ? .glassProminent : .glass)
-        .tint(isActive ? .teal : .primary)
-        .glassEffectUnion(id: "templatechips", namespace: namespace)
+        .buttonStyle(.plain)
         .accessibilityLabel("Shift \(label)")
     }
 }

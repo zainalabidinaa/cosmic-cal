@@ -28,7 +28,6 @@ struct WorkLogApp: App {
                 }
             }
             .tint(.teal)
-            .tabBarMinimizeBehavior(.onScrollDown)
             .background {
                 LiquidBackdrop()
             }
