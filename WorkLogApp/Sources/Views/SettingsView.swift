@@ -14,11 +14,12 @@ struct SettingsView: View {
                     VStack(spacing: 14) {
                         GlassCard(style: .elevated) {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("labmedicin")
+                                Text("LMB")
                                     .font(.title2.weight(.bold))
+                                    .foregroundStyle(.white)
                                 Text("Calendar-first shift logging with a cleaner liquid interface.")
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.white.opacity(0.82))
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -59,7 +60,7 @@ struct SettingsView: View {
 
                         SettingsGlassSection(title: "Calendar Event", icon: "calendar.badge.clock") {
                             SettingsTextFieldRow(title: "Event Title") {
-                                TextField("LMB Lund", text: $settings.eventTitle)
+                                TextField("LMB", text: $settings.eventTitle)
                             }
                             SettingsTextFieldRow(title: "Calendar Name") {
                                 TextField("Arbete", text: $settings.calendarName)
@@ -153,7 +154,7 @@ private struct SettingsGlassSection<Content: View>: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label(title, systemImage: icon)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.92))
 
                 content
             }
@@ -175,15 +176,16 @@ private struct SettingsTextFieldRow<Content: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.78))
             field
+                .foregroundStyle(.white)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(.white.opacity(0.16), lineWidth: 1)
+                        .stroke(.white.opacity(0.24), lineWidth: 1)
                 }
         }
     }

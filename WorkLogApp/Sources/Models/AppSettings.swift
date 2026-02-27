@@ -35,10 +35,11 @@ final class AppSettings: ObservableObject {
 
     init() {
         let stored = Self.loadFromDisk()
+        let normalizedEventTitle = stored.eventTitle == "LMB Lund" ? "LMB" : stored.eventTitle
         _destinationAddress = Published(initialValue: stored.destinationAddress)
         _originFallbackAddress = Published(initialValue: stored.originFallbackAddress)
         _calendarName = Published(initialValue: stored.calendarName)
-        _eventTitle = Published(initialValue: stored.eventTitle)
+        _eventTitle = Published(initialValue: normalizedEventTitle)
         _shiftTemplates = Published(initialValue: stored.shiftTemplates)
         _iCloudEmail = Published(initialValue: stored.iCloudEmail)
         ready = true
@@ -84,7 +85,7 @@ private struct SettingsData: Codable {
     var destinationAddress = "Akutgatan 8, Lund"
     var originFallbackAddress = "Traktörsgatan 11, Helsingborg"
     var calendarName = "Arbete"
-    var eventTitle = "LMB Lund"
+    var eventTitle = "LMB"
     var shiftTemplates = ShiftTemplate.defaults
     var iCloudEmail = ""
 }

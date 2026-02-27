@@ -27,7 +27,8 @@ struct WorkLogApp: App {
                     SettingsView()
                 }
             }
-            .tint(.teal)
+            .tint(.mint)
+            .preferredColorScheme(.dark)
             .adaptiveTabBarBehavior()
             .background {
                 LiquidBackdrop()

@@ -194,15 +194,13 @@ final class CalendarSync {
 
     private func setTravelRoutingModeIfSupported(event: EKEvent) {
         // Best-effort: prefer driving when Calendar computes "Based on location".
-        let keys = ["travelRoutingMode", "travelMode", "travelTransportType"]
+        let keys = ["setTravelRoutingMode:", "setTravelMode:", "setTravelTransportType:"]
         let drivingValue = NSNumber(value: 0)
 
         for key in keys {
-            let getter = Selector((key))
-            let setter = Selector(("set" + key.prefix(1).uppercased() + key.dropFirst() + ":"))
-
-            if event.responds(to: getter) || event.responds(to: setter) {
-                event.setValue(drivingValue, forKey: key)
+            let setter = Selector(key)
+            if event.responds(to: setter) {
+                _ = event.perform(setter, with: drivingValue)
                 return
             }
         }
@@ -224,15 +222,6 @@ final class CalendarSync {
             return
         }
 
-        // Fallback to KVC if the runtime exposes a key.
-        let keys = ["travelStartLocation", "structuredTravelStartLocation", "structuredStartLocation", "startLocation"]
-        for key in keys {
-            let getter = Selector((key))
-            if event.responds(to: getter) {
-                event.setValue(structured, forKey: key)
-                return
-            }
-        }
     }
 
     private func resolveOriginLocation() async -> (title: String, location: CLLocation)? {
