@@ -11,6 +11,7 @@ struct LogView: View {
     @State private var successHapticTrigger = 0
     @State private var errorHapticTrigger = 0
     @State private var dismissTask: Task<Void, Never>?
+    @State private var animateIn = false
     @Namespace private var templateNamespace
 
     var body: some View {
@@ -18,6 +19,24 @@ struct LogView: View {
             ScrollView {
                 AdaptiveGlassGroup(spacing: 18) {
                     VStack(spacing: 16) {
+                        GlassCard(style: .elevated) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(Formatters.day.string(from: day))
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(durationPreview)
+                                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                                    Spacer()
+                                    Image(systemName: "sparkles")
+                                        .imageScale(.large)
+                                        .foregroundStyle(.cyan)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
                         GlassCard(style: .elevated) {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
@@ -101,6 +120,9 @@ struct LogView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 100)
+                .opacity(animateIn ? 1 : 0.6)
+                .offset(y: animateIn ? 0 : 18)
+                .animation(.easeOut(duration: 0.35), value: animateIn)
             }
             .safeAreaInset(edge: .bottom) {
                 Button {
@@ -138,6 +160,7 @@ struct LogView: View {
             .animation(.easeInOut(duration: 0.3), value: store.lastSaveMessage)
             .animation(.easeInOut(duration: 0.3), value: store.lastErrorMessage)
             .onAppear { loadForDay(day) }
+            .onAppear { animateIn = true }
             .onChange(of: store.requestedEditDay) { _, newValue in
                 guard let newValue else { return }
                 day = newValue

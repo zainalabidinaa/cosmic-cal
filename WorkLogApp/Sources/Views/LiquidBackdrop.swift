@@ -1,30 +1,55 @@
 import SwiftUI
 
 struct LiquidBackdrop: View {
+    @State private var drift = false
+
     var body: some View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.06, green: 0.12, blue: 0.2),
-                    Color(red: 0.04, green: 0.18, blue: 0.17),
-                    Color(red: 0.02, green: 0.06, blue: 0.12)
+                    Color(red: 0.02, green: 0.04, blue: 0.14),
+                    Color(red: 0.03, green: 0.12, blue: 0.18),
+                    Color(red: 0.07, green: 0.05, blue: 0.2)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
-            Circle()
-                .fill(Color.cyan.opacity(0.28))
-                .frame(width: 320, height: 320)
-                .offset(x: 140, y: -280)
-                .blur(radius: 36)
+            Ellipse()
+                .fill(
+                    LinearGradient(
+                        colors: [.cyan.opacity(0.26), .blue.opacity(0.1)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 360, height: 280)
+                .offset(x: drift ? 120 : 170, y: drift ? -260 : -300)
+                .blur(radius: 42)
 
-            Circle()
-                .fill(Color.teal.opacity(0.2))
-                .frame(width: 280, height: 280)
-                .offset(x: -140, y: 260)
-                .blur(radius: 44)
+            Ellipse()
+                .fill(
+                    LinearGradient(
+                        colors: [.indigo.opacity(0.16), .teal.opacity(0.08)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: 340, height: 240)
+                .offset(x: drift ? -170 : -120, y: drift ? 300 : 250)
+                .blur(radius: 48)
+
+            Ellipse()
+                .fill(Color.white.opacity(0.08))
+                .frame(width: 240, height: 120)
+                .offset(x: 0, y: drift ? 420 : 390)
+                .blur(radius: 30)
         }
         .ignoresSafeArea()
+        .onAppear {
+            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
+                drift = true
+            }
+        }
     }
 }

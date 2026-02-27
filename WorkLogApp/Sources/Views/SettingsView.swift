@@ -9,91 +9,104 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
-                    SettingsGlassSection(title: "iCloud CalDAV", icon: "icloud") {
-                        SettingsTextFieldRow(title: "Apple ID Email") {
-                            TextField("name@icloud.com", text: $settings.iCloudEmail)
-                                .textContentType(.emailAddress)
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.emailAddress)
+                AdaptiveGlassGroup(spacing: 14) {
+                    VStack(spacing: 14) {
+                        GlassCard(style: .elevated) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("labmedicin")
+                                    .font(.title2.weight(.bold))
+                                Text("Calendar-first shift logging with a cleaner liquid interface.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
 
-                        SettingsTextFieldRow(title: "App-Specific Password") {
-                            SecureField("Required for CalDAV sync", text: $appPassword)
-                                .textContentType(.password)
-                                .onChange(of: appPassword) { _, newValue in
-                                    guard !settings.iCloudEmail.isEmpty else { return }
-                                    if newValue.isEmpty {
-                                        KeychainHelper.deletePassword(account: settings.iCloudEmail)
-                                    } else {
-                                        KeychainHelper.savePassword(newValue, account: settings.iCloudEmail)
+                        SettingsGlassSection(title: "iCloud CalDAV", icon: "icloud") {
+                            SettingsTextFieldRow(title: "Apple ID Email") {
+                                TextField("name@icloud.com", text: $settings.iCloudEmail)
+                                    .textContentType(.emailAddress)
+                                    .textInputAutocapitalization(.never)
+                                    .keyboardType(.emailAddress)
+                            }
+
+                            SettingsTextFieldRow(title: "App-Specific Password") {
+                                SecureField("Required for CalDAV sync", text: $appPassword)
+                                    .textContentType(.password)
+                                    .onChange(of: appPassword) { _, newValue in
+                                        guard !settings.iCloudEmail.isEmpty else { return }
+                                        if newValue.isEmpty {
+                                            KeychainHelper.deletePassword(account: settings.iCloudEmail)
+                                        } else {
+                                            KeychainHelper.savePassword(newValue, account: settings.iCloudEmail)
+                                        }
                                     }
-                                }
-                        }
+                            }
 
-                        if settings.calDAVConfigured {
-                            Label("CalDAV enabled — travel time included.", systemImage: "checkmark.circle.fill")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.green)
-                        } else {
-                            Text("Enter your Apple ID and app-specific password to sync with travel time via CalDAV.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    SettingsGlassSection(title: "Calendar Event", icon: "calendar.badge.clock") {
-                        SettingsTextFieldRow(title: "Event Title") {
-                            TextField("LMB Lund", text: $settings.eventTitle)
-                        }
-                        SettingsTextFieldRow(title: "Calendar Name") {
-                            TextField("Arbete", text: $settings.calendarName)
-                        }
-                    }
-
-                    SettingsGlassSection(title: "Location", icon: "location") {
-                        SettingsTextFieldRow(title: "Destination") {
-                            TextField("Destination address", text: $settings.destinationAddress)
-                        }
-                        SettingsTextFieldRow(title: "Fallback Origin") {
-                            TextField("Origin fallback", text: $settings.originFallbackAddress)
-                        }
-                    }
-
-                    SettingsGlassSection(title: "Shift Templates", icon: "clock.badge") {
-                        ForEach(settings.shiftTemplates) { template in
-                            HStack {
-                                Text(template.label)
-                                    .font(.body.monospacedDigit())
-                                Spacer()
-                                Button(role: .destructive) {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        settings.shiftTemplates.removeAll { $0.id == template.id }
-                                    }
-                                } label: {
-                                    Image(systemName: "trash")
-                                }
-                                .adaptiveSecondaryButtonStyle()
+                            if settings.calDAVConfigured {
+                                Label("CalDAV enabled — travel time included.", systemImage: "checkmark.circle.fill")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.green)
+                            } else {
+                                Text("Enter your Apple ID and app-specific password to sync with travel time via CalDAV.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
 
-                        Button {
-                            showingAddTemplate = true
-                        } label: {
-                            Label("Add Template", systemImage: "plus")
-                                .frame(maxWidth: .infinity)
+                        SettingsGlassSection(title: "Calendar Event", icon: "calendar.badge.clock") {
+                            SettingsTextFieldRow(title: "Event Title") {
+                                TextField("LMB Lund", text: $settings.eventTitle)
+                            }
+                            SettingsTextFieldRow(title: "Calendar Name") {
+                                TextField("Arbete", text: $settings.calendarName)
+                            }
                         }
-                        .adaptivePrimaryButtonStyle()
-                        .tint(.teal)
-                    }
 
-                    GlassCard(style: .subtle) {
-                        Button("Reset to Defaults", role: .destructive) {
-                            settings.resetToDefaults()
-                            appPassword = ""
+                        SettingsGlassSection(title: "Location", icon: "location") {
+                            SettingsTextFieldRow(title: "Destination") {
+                                TextField("Destination address", text: $settings.destinationAddress)
+                            }
+                            SettingsTextFieldRow(title: "Fallback Origin") {
+                                TextField("Origin fallback", text: $settings.originFallbackAddress)
+                            }
                         }
-                        .frame(maxWidth: .infinity)
-                        .adaptiveSecondaryButtonStyle()
+
+                        SettingsGlassSection(title: "Shift Templates", icon: "clock.badge") {
+                            ForEach(settings.shiftTemplates) { template in
+                                HStack {
+                                    Text(template.label)
+                                        .font(.body.monospacedDigit())
+                                    Spacer()
+                                    Button(role: .destructive) {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            settings.shiftTemplates.removeAll { $0.id == template.id }
+                                        }
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                    .adaptiveSecondaryButtonStyle()
+                                }
+                            }
+
+                            Button {
+                                showingAddTemplate = true
+                            } label: {
+                                Label("Add Template", systemImage: "plus")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .adaptivePrimaryButtonStyle()
+                            .tint(.teal)
+                        }
+
+                        GlassCard(style: .subtle) {
+                            Button("Reset to Defaults", role: .destructive) {
+                                settings.resetToDefaults()
+                                appPassword = ""
+                            }
+                            .frame(maxWidth: .infinity)
+                            .adaptiveSecondaryButtonStyle()
+                        }
                     }
                 }
                 .padding(.horizontal, 16)

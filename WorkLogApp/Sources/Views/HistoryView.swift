@@ -72,8 +72,11 @@ struct HistoryView: View {
                                     }
                                 }
                             }
+                        } header: {
+                            Text("Saved Shifts")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
-                    }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                 }
