@@ -98,7 +98,8 @@ struct HistoryView: View {
                             Image(systemName: "square.and.arrow.up")
                         }
                         .adaptivePrimaryButtonStyle()
-                        .tint(.teal)
+                        .tint(.orange)
+                        .adaptiveGlassUnion(id: "historysummary", namespace: summaryNamespace)
                     }
                 }
             }

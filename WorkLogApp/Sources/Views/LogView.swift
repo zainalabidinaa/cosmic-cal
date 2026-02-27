@@ -32,7 +32,7 @@ struct LogView: View {
                                     Spacer()
                                     Image(systemName: "sparkles")
                                         .imageScale(.large)
-                                        .foregroundStyle(.cyan)
+                                        .foregroundStyle(.orange)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -108,6 +108,7 @@ struct LogView: View {
                                     .foregroundStyle(.green)
                                     .font(.subheadline.weight(.medium))
                             }
+                            .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
@@ -117,6 +118,7 @@ struct LogView: View {
                                     .foregroundStyle(.orange)
                                     .font(.subheadline.weight(.medium))
                             }
+                            .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
@@ -147,11 +149,12 @@ struct LogView: View {
                 }
                 .adaptivePrimaryButtonStyle()
                 .controlSize(.large)
-                .tint(.teal)
+                .tint(.orange)
                 .disabled(isSaving)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .accessibilityLabel(isSaving ? "Saving shift" : "Save shift")
+                .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
             }
             .scrollContentBackground(.hidden)
             .background {
@@ -159,6 +162,16 @@ struct LogView: View {
             }
             .navigationTitle(settings.eventTitle)
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(settings.eventTitle)
+                        .font(.headline.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.white.opacity(0.12), in: Capsule(style: .continuous))
+                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
+                }
+            }
             .sensoryFeedback(.success, trigger: successHapticTrigger)
             .sensoryFeedback(.error, trigger: errorHapticTrigger)
             .animation(.easeInOut(duration: 0.3), value: store.lastSaveMessage)
@@ -269,7 +282,7 @@ private struct TemplateChip: View {
                 .padding(.horizontal, 14)
                 .foregroundStyle(isActive ? .white : .primary)
                 .background(
-                    isActive ? Color.teal.opacity(0.75) : Color.white.opacity(0.12),
+                    isActive ? Color.orange.opacity(0.75) : Color.white.opacity(0.12),
                     in: Capsule(style: .continuous)
                 )
                 .overlay {

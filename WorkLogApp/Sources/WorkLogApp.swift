@@ -27,7 +27,7 @@ struct WorkLogApp: App {
                     SettingsView()
                 }
             }
-            .tint(.mint)
+            .tint(.orange)
             .preferredColorScheme(.dark)
             .adaptiveTabBarBehavior()
             .background {

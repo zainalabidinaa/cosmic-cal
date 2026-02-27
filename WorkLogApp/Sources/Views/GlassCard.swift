@@ -74,7 +74,7 @@ struct GlassCard<Content: View>: View {
         case .regular:
             return .regular
         case .elevated:
-            return .regular.tint(.teal.opacity(0.18))
+            return .regular.tint(.orange.opacity(0.18))
         case .subtle:
             return .clear
         }
@@ -86,7 +86,7 @@ struct GlassCard<Content: View>: View {
         case .regular:
             return AnyShapeStyle(.ultraThinMaterial)
         case .elevated:
-            return AnyShapeStyle(Color.teal.opacity(0.12))
+            return AnyShapeStyle(Color.orange.opacity(0.12))
         case .subtle:
             return AnyShapeStyle(Color.white.opacity(0.06))
         }

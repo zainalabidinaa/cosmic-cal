@@ -102,7 +102,7 @@ struct SettingsView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .adaptivePrimaryButtonStyle()
-                            .tint(.teal)
+                            .tint(.orange)
                         }
                         .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
 
@@ -114,6 +114,7 @@ struct SettingsView: View {
                             .frame(maxWidth: .infinity)
                             .adaptiveSecondaryButtonStyle()
                         }
+                        .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
                     }
                 }
                 .padding(.horizontal, 16)

@@ -7,9 +7,9 @@ struct LiquidBackdrop: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.03, green: 0.08, blue: 0.1),
-                    Color(red: 0.04, green: 0.14, blue: 0.18),
-                    Color(red: 0.05, green: 0.09, blue: 0.16)
+                    Color(red: 0.08, green: 0.11, blue: 0.08),
+                    Color(red: 0.12, green: 0.17, blue: 0.12),
+                    Color(red: 0.16, green: 0.12, blue: 0.09)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -18,7 +18,7 @@ struct LiquidBackdrop: View {
             Ellipse()
                 .fill(
                     LinearGradient(
-                        colors: [.mint.opacity(0.28), .cyan.opacity(0.12)],
+                        colors: [.green.opacity(0.24), .mint.opacity(0.1)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -30,7 +30,7 @@ struct LiquidBackdrop: View {
             Ellipse()
                 .fill(
                     LinearGradient(
-                        colors: [.blue.opacity(0.15), .mint.opacity(0.08)],
+                        colors: [.orange.opacity(0.16), .yellow.opacity(0.08)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -50,7 +50,7 @@ struct LiquidBackdrop: View {
                 Ellipse()
                     .fill(
                         LinearGradient(
-                            colors: [.white.opacity(0.18), .clear],
+                            colors: [.yellow.opacity(0.24), .clear],
                             startPoint: .top,
                             endPoint: .bottom
                         )
