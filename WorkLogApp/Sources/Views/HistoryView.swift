@@ -77,6 +77,7 @@ struct HistoryView: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
                         }
+                    }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                 }
