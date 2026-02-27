@@ -1,10 +1,12 @@
 import SwiftUI
+import EventKit
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @State private var showingAddTemplate = false
     @State private var appPassword = ""
     @State private var passwordLoaded = false
+    @StateObject private var calendarCatalog = CalendarCatalog()
     @Namespace private var settingsNamespace
 
     var body: some View {
@@ -62,8 +64,27 @@ struct SettingsView: View {
                             SettingsTextFieldRow(title: "Event Title") {
                                 TextField("LMB", text: $settings.eventTitle)
                             }
-                            SettingsTextFieldRow(title: "Calendar Name") {
-                                TextField("Arbete", text: $settings.calendarName)
+                            SettingsValueRow(title: "Calendar Name") {
+                                if calendarCatalog.calendarNames.isEmpty {
+                                    HStack {
+                                        Text(calendarCatalog.statusText)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.white.opacity(0.86))
+                                        Spacer()
+                                        Button("Reload") {
+                                            Task { await refreshCalendars() }
+                                        }
+                                        .adaptiveSecondaryButtonStyle()
+                                    }
+                                } else {
+                                    Picker("Calendar", selection: $settings.calendarName) {
+                                        ForEach(calendarCatalog.calendarNames, id: \.self) { name in
+                                            Text(name).tag(name)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(.white)
+                                }
                             }
                         }
                         .adaptiveGlassUnion(id: "settingssurfaces", namespace: settingsNamespace)
@@ -131,11 +152,53 @@ struct SettingsView: View {
                 if !settings.iCloudEmail.isEmpty {
                     appPassword = KeychainHelper.loadPassword(account: settings.iCloudEmail) ?? ""
                 }
+                Task { await refreshCalendars() }
             }
             .sheet(isPresented: $showingAddTemplate) {
                 AddTemplateSheet(settings: settings)
             }
         }
+    }
+
+    private func refreshCalendars() async {
+        await calendarCatalog.load()
+        if !calendarCatalog.calendarNames.contains(settings.calendarName), let first = calendarCatalog.calendarNames.first {
+            settings.calendarName = first
+        }
+    }
+}
+
+@MainActor
+private final class CalendarCatalog: ObservableObject {
+    @Published var calendarNames: [String] = []
+    @Published var statusText = "No calendars available"
+
+    private let eventStore = EKEventStore()
+
+    func load() async {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        switch status {
+        case .notDetermined:
+            _ = try? await eventStore.requestFullAccessToEvents()
+        case .authorized, .fullAccess, .writeOnly:
+            break
+        case .denied, .restricted:
+            calendarNames = []
+            statusText = "Calendar access is denied"
+            return
+        @unknown default:
+            calendarNames = []
+            statusText = "Calendar permission unavailable"
+            return
+        }
+
+        let writable = eventStore.calendars(for: .event)
+            .filter { $0.allowsContentModifications }
+            .map(\.title)
+        let uniqueSorted = Array(Set(writable)).sorted()
+
+        calendarNames = uniqueSorted
+        statusText = uniqueSorted.isEmpty ? "No writable calendars found" : ""
     }
 }
 
@@ -181,6 +244,32 @@ private struct SettingsTextFieldRow<Content: View>: View {
             field
                 .foregroundStyle(.white)
                 .textFieldStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(.white.opacity(0.24), lineWidth: 1)
+                }
+        }
+    }
+}
+
+private struct SettingsValueRow<Content: View>: View {
+    let title: String
+    private let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.78))
+            content
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
