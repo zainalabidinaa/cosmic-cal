@@ -183,7 +183,7 @@ final class CalendarSync {
         // selecting a hardcoded minute value.
         let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin, to: structuredDestination.geoLocation, arrivalDate: log.start) ?? fallbackTravelTime
         let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
-        event.travelTime = travelTimeSeconds
+        setTravelTimeIfSupported(event: event, seconds: travelTimeSeconds)
 
         applyDefaultAlarms(to: event, travelTime: travelTimeSeconds)
 
@@ -205,6 +205,19 @@ final class CalendarSync {
                 _ = event.perform(setter, with: drivingValue)
                 return
             }
+        }
+    }
+
+    private func setTravelTimeIfSupported(event: EKEvent, seconds: TimeInterval) {
+        let value = NSNumber(value: Int(seconds))
+        let setterSelectors: [Selector] = [
+            Selector(("setTravelTime:")),
+            Selector(("setExpectedTravelTime:"))
+        ]
+
+        for setter in setterSelectors where event.responds(to: setter) {
+            _ = event.perform(setter, with: value)
+            return
         }
     }
 
