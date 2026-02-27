@@ -88,8 +88,8 @@ final class CalendarSync {
         let destinationLoc = destinationCoord.map {
             CLLocation(latitude: $0.latitude, longitude: $0.longitude)
         }
-        let useCurrentLocationStart = origin?.title == "Current Location"
-        let travelStartAddress = origin?.title ?? settings.originFallbackAddress
+        let useCurrentLocationStart = settings.travelOriginMode == .currentLocation
+        let travelStartAddress = useCurrentLocationStart ? "Current Location" : settings.originFallbackAddress
         let travelRaw = await estimateTravelTimeSeconds(
             from: origin, to: destinationLoc, arrivalDate: log.start
         ) ?? fallbackTravelTime
@@ -243,17 +243,21 @@ final class CalendarSync {
     }
 
     private func resolveOriginLocation() async -> (title: String, location: CLLocation)? {
-        if let current = try? await locationClient.fetchLocation() {
-            return (title: "Current Location", location: current)
-        }
+        switch settings.travelOriginMode {
+        case .currentLocation:
+            if let current = try? await locationClient.fetchLocation() {
+                return (title: "Current Location", location: current)
+            }
+            return nil
 
-        let fallbackAddress = settings.originFallbackAddress
-        if let fallbackCoordinate = try? await geocode(address: fallbackAddress) {
-            let fallback = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
-            return (title: fallbackAddress, location: fallback)
+        case .customAddress:
+            let fallbackAddress = settings.originFallbackAddress
+            if let fallbackCoordinate = try? await geocode(address: fallbackAddress) {
+                let fallback = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
+                return (title: fallbackAddress, location: fallback)
+            }
+            return nil
         }
-
-        return nil
     }
 
     private func applyDefaultAlarms(to event: EKEvent, travelTime: TimeInterval) {

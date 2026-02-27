@@ -195,12 +195,22 @@ private struct HistoryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [.orange.opacity(0.9), .yellow.opacity(0.75)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 10, height: 10)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(day)
                     .font(.headline)
                 Text(time)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.72))
             }
 
             Spacer(minLength: 10)

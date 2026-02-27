@@ -16,8 +16,16 @@ struct SettingsView: View {
                     VStack(spacing: 14) {
                         GlassCard(style: .elevated) {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("LMB")
-                                    .font(.title2.weight(.bold))
+                                HStack {
+                                    Text("LMB")
+                                        .font(.title2.weight(.bold))
+                                    Spacer()
+                                    Text(settings.calendarName)
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(.white.opacity(0.12), in: Capsule(style: .continuous))
+                                }
                                     .foregroundStyle(.white)
                                 Text("Calendar-first shift logging with a cleaner liquid interface.")
                                     .font(.subheadline)
@@ -88,11 +96,27 @@ struct SettingsView: View {
                         }
 
                         SettingsGlassSection(title: "Location", icon: "location") {
+                            SettingsValueRow(title: "Travel Origin") {
+                                Picker("Travel Origin", selection: $settings.travelOriginMode) {
+                                    ForEach(TravelOriginMode.allCases) { mode in
+                                        Text(mode.title).tag(mode)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                            }
+
                             SettingsTextFieldRow(title: "Destination") {
                                 TextField("Destination address", text: $settings.destinationAddress)
                             }
-                            SettingsTextFieldRow(title: "Fallback Origin") {
-                                TextField("Origin fallback", text: $settings.originFallbackAddress)
+
+                            if settings.travelOriginMode == .customAddress {
+                                SettingsTextFieldRow(title: "Custom Origin") {
+                                    TextField("Origin address", text: $settings.originFallbackAddress)
+                                }
+                            } else {
+                                Text("Current mode uses your device location for travel-time routing.")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.78))
                             }
                         }
 
@@ -214,6 +238,9 @@ private struct SettingsGlassSection<Content: View>: View {
                 Label(title, systemImage: icon)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.92))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.white.opacity(0.08), in: Capsule(style: .continuous))
 
                 content
             }

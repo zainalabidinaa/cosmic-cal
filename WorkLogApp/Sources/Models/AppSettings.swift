@@ -1,5 +1,21 @@
 import Foundation
 
+enum TravelOriginMode: String, Codable, CaseIterable, Identifiable {
+    case currentLocation
+    case customAddress
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .currentLocation:
+            return "Current"
+        case .customAddress:
+            return "Custom"
+        }
+    }
+}
+
 struct ShiftTemplate: Identifiable, Codable, Equatable {
     var id = UUID()
     var startHour: Int
@@ -21,6 +37,7 @@ struct ShiftTemplate: Identifiable, Codable, Equatable {
 @MainActor
 final class AppSettings: ObservableObject {
     @Published var destinationAddress: String { didSet { persistIfReady() } }
+    @Published var travelOriginMode: TravelOriginMode { didSet { persistIfReady() } }
     @Published var originFallbackAddress: String { didSet { persistIfReady() } }
     @Published var calendarName: String { didSet { persistIfReady() } }
     @Published var eventTitle: String { didSet { persistIfReady() } }
@@ -37,6 +54,7 @@ final class AppSettings: ObservableObject {
         let stored = Self.loadFromDisk()
         let normalizedEventTitle = stored.eventTitle == "LMB Lund" ? "LMB" : stored.eventTitle
         _destinationAddress = Published(initialValue: stored.destinationAddress)
+        _travelOriginMode = Published(initialValue: stored.travelOriginMode)
         _originFallbackAddress = Published(initialValue: stored.originFallbackAddress)
         _calendarName = Published(initialValue: stored.calendarName)
         _eventTitle = Published(initialValue: normalizedEventTitle)
@@ -51,6 +69,7 @@ final class AppSettings: ObservableObject {
         }
         let defaults = SettingsData()
         destinationAddress = defaults.destinationAddress
+        travelOriginMode = defaults.travelOriginMode
         originFallbackAddress = defaults.originFallbackAddress
         calendarName = defaults.calendarName
         eventTitle = defaults.eventTitle
@@ -62,6 +81,7 @@ final class AppSettings: ObservableObject {
         guard ready else { return }
         let payload = SettingsData(
             destinationAddress: destinationAddress,
+            travelOriginMode: travelOriginMode,
             originFallbackAddress: originFallbackAddress,
             calendarName: calendarName,
             eventTitle: eventTitle,
@@ -83,6 +103,7 @@ final class AppSettings: ObservableObject {
 
 private struct SettingsData: Codable {
     var destinationAddress = "Akutgatan 8, Lund"
+    var travelOriginMode: TravelOriginMode = .currentLocation
     var originFallbackAddress = "Traktörsgatan 11, Helsingborg"
     var calendarName = "Arbete"
     var eventTitle = "LMB"

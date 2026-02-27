@@ -21,22 +21,48 @@ struct LogView: View {
                 AdaptiveGlassGroup(spacing: 18) {
                     VStack(spacing: 16) {
                         GlassCard(style: .elevated) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(Formatters.day.string(from: day))
-                                    .font(.headline)
-                                    .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Shift Preview")
+                                            .font(.caption.weight(.medium))
+                                            .foregroundStyle(.white.opacity(0.75))
+                                        Text(Formatters.day.string(from: day))
+                                            .font(.headline)
+                                    }
 
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text(durationPreview)
-                                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
                                     Spacer()
-                                    Image(systemName: "sparkles")
-                                        .imageScale(.large)
-                                        .foregroundStyle(.orange)
+
+                                    Text(durationPreview)
+                                        .font(.system(size: 32, weight: .bold, design: .rounded).monospacedDigit())
                                 }
+
+                                HStack(spacing: 8) {
+                                    TimeBadge(title: "In", value: Formatters.time.string(from: startTime))
+                                    TimeBadge(title: "Out", value: Formatters.time.string(from: endTime))
+                                }
+
+                                GeometryReader { proxy in
+                                    ZStack(alignment: .leading) {
+                                        Capsule(style: .continuous)
+                                            .fill(.white.opacity(0.14))
+
+                                        Capsule(style: .continuous)
+                                            .fill(
+                                                LinearGradient(
+                                                    colors: [.orange.opacity(0.9), .yellow.opacity(0.7)],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                )
+                                            )
+                                            .frame(width: proxy.size.width * shiftProgress)
+                                    }
+                                }
+                                .frame(height: 8)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
 
                         GlassCard(style: .elevated) {
                             VStack(alignment: .leading, spacing: 12) {
@@ -52,10 +78,10 @@ struct LogView: View {
                                         .foregroundStyle(.primary)
                                 }
 
-                            DatePicker("Day", selection: $day, displayedComponents: .date)
-                                .datePickerStyle(.compact)
-                                .tint(.orange)
-                                .onChange(of: day) { _, newValue in loadForDay(newValue) }
+                                DatePicker("Day", selection: $day, displayedComponents: .date)
+                                    .datePickerStyle(.compact)
+                                    .tint(.orange)
+                                    .onChange(of: day) { _, newValue in loadForDay(newValue) }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -265,6 +291,12 @@ struct LogView: View {
             return "\(minutes)m"
         }
     }
+
+    private var shiftProgress: CGFloat {
+        let secondsInDay: TimeInterval = 24 * 60 * 60
+        let duration = max(0, min(secondsInDay, endTime.timeIntervalSince(startTime)))
+        return max(0.04, CGFloat(duration / secondsInDay))
+    }
 }
 
 // MARK: - Template Chip
@@ -301,5 +333,23 @@ private struct TemplateChip: View {
         .buttonStyle(.plain)
         .adaptiveGlassUnion(id: "templatechips", namespace: namespace)
         .accessibilityLabel("Shift \(label)")
+    }
+}
+
+private struct TimeBadge: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.white.opacity(0.75))
+            Text(value)
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
