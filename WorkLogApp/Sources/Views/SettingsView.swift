@@ -8,73 +8,99 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                DarkBackground()
+            ScrollView {
+                VStack(spacing: 14) {
+                    SettingsGlassSection(title: "iCloud CalDAV", icon: "icloud") {
+                        SettingsTextFieldRow(title: "Apple ID Email") {
+                            TextField("name@icloud.com", text: $settings.iCloudEmail)
+                                .textContentType(.emailAddress)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                        }
 
-                Form {
-                    Section {
-                        TextField("Apple ID Email", text: $settings.iCloudEmail)
-                            .textContentType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.emailAddress)
-
-                        SecureField("App-Specific Password", text: $appPassword)
-                            .textContentType(.password)
-                            .onChange(of: appPassword) { _, newValue in
-                                guard !settings.iCloudEmail.isEmpty else { return }
-                                if newValue.isEmpty {
-                                    KeychainHelper.deletePassword(account: settings.iCloudEmail)
-                                } else {
-                                    KeychainHelper.savePassword(newValue, account: settings.iCloudEmail)
+                        SettingsTextFieldRow(title: "App-Specific Password") {
+                            SecureField("Required for CalDAV sync", text: $appPassword)
+                                .textContentType(.password)
+                                .onChange(of: appPassword) { _, newValue in
+                                    guard !settings.iCloudEmail.isEmpty else { return }
+                                    if newValue.isEmpty {
+                                        KeychainHelper.deletePassword(account: settings.iCloudEmail)
+                                    } else {
+                                        KeychainHelper.savePassword(newValue, account: settings.iCloudEmail)
+                                    }
                                 }
-                            }
+                        }
 
                         if settings.calDAVConfigured {
                             Label("CalDAV enabled — travel time included.", systemImage: "checkmark.circle.fill")
-                                .font(.caption)
+                                .font(.caption.weight(.medium))
                                 .foregroundStyle(.green)
                         } else {
-                            Text("Enter your Apple ID and an app-specific password to sync with travel time via CalDAV.")
+                            Text("Enter your Apple ID and app-specific password to sync with travel time via CalDAV.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                    } header: {
-                        Text("iCloud CalDAV")
                     }
 
-                    Section("Calendar Event") {
-                        TextField("Event Title", text: $settings.eventTitle)
-                        TextField("Calendar Name", text: $settings.calendarName)
-                    }
-
-                    Section("Location") {
-                        TextField("Destination Address", text: $settings.destinationAddress)
-                        TextField("Fallback Origin Address", text: $settings.originFallbackAddress)
-                    }
-
-                    Section("Shift Templates") {
-                        ForEach(settings.shiftTemplates) { template in
-                            Text(template.label)
+                    SettingsGlassSection(title: "Calendar Event", icon: "calendar.badge.clock") {
+                        SettingsTextFieldRow(title: "Event Title") {
+                            TextField("LMB Lund", text: $settings.eventTitle)
                         }
-                        .onDelete { offsets in
-                            settings.shiftTemplates.remove(atOffsets: offsets)
+                        SettingsTextFieldRow(title: "Calendar Name") {
+                            TextField("Arbete", text: $settings.calendarName)
+                        }
+                    }
+
+                    SettingsGlassSection(title: "Location", icon: "location") {
+                        SettingsTextFieldRow(title: "Destination") {
+                            TextField("Destination address", text: $settings.destinationAddress)
+                        }
+                        SettingsTextFieldRow(title: "Fallback Origin") {
+                            TextField("Origin fallback", text: $settings.originFallbackAddress)
+                        }
+                    }
+
+                    SettingsGlassSection(title: "Shift Templates", icon: "clock.badge") {
+                        ForEach(settings.shiftTemplates) { template in
+                            HStack {
+                                Text(template.label)
+                                    .font(.body.monospacedDigit())
+                                Spacer()
+                                Button(role: .destructive) {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        settings.shiftTemplates.removeAll { $0.id == template.id }
+                                    }
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.glass)
+                            }
                         }
 
                         Button {
                             showingAddTemplate = true
                         } label: {
                             Label("Add Template", systemImage: "plus")
+                                .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(.glassProminent)
+                        .tint(.teal)
                     }
 
-                    Section {
+                    GlassCard(style: .subtle) {
                         Button("Reset to Defaults", role: .destructive) {
                             settings.resetToDefaults()
                             appPassword = ""
                         }
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.glass)
                     }
                 }
-                .scrollContentBackground(.hidden)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+            .background {
+                LiquidBackdrop()
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
@@ -92,6 +118,58 @@ struct SettingsView: View {
     }
 }
 
+private struct SettingsGlassSection<Content: View>: View {
+    let title: String
+    let icon: String
+    private let content: Content
+
+    init(title: String, icon: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.icon = icon
+        self.content = content()
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(title, systemImage: icon)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct SettingsTextFieldRow<Content: View>: View {
+    let title: String
+    private let field: Content
+
+    init(title: String, @ViewBuilder field: () -> Content) {
+        self.title = title
+        self.field = field()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            field
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(.white.opacity(0.16), lineWidth: 1)
+                }
+        }
+    }
+}
+
 private struct AddTemplateSheet: View {
     let settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -104,6 +182,7 @@ private struct AddTemplateSheet: View {
                 DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
                 DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
             }
+            .formStyle(.grouped)
             .navigationTitle("New Template")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -126,5 +205,6 @@ private struct AddTemplateSheet: View {
             }
         }
         .presentationDetents([.medium])
+        .presentationBackground(.regularMaterial)
     }
 }

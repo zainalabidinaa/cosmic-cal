@@ -8,26 +8,36 @@ struct HistoryView: View {
 
     @State private var logToDelete: WorkLog?
     @State private var showDeleteConfirmation = false
+    @Namespace private var summaryNamespace
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                DarkBackground()
-
+            Group {
                 if store.logs.isEmpty {
-                    ContentUnavailableView(
-                        "No Shifts Yet",
-                        systemImage: "clock",
-                        description: Text("Save a shift in the Log tab to get started.")
-                    )
+                    VStack {
+                        Spacer(minLength: 40)
+                        GlassCard(style: .subtle) {
+                            ContentUnavailableView(
+                                "No Shifts Yet",
+                                systemImage: "clock",
+                                description: Text("Save a shift in the Log tab to get started.")
+                            )
+                        }
+                        .padding(.horizontal, 16)
+                        Spacer()
+                    }
                 } else {
                     List {
                         Section {
-                            GlassCard {
-                                HStack(spacing: 0) {
-                                    SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
-                                    Spacer()
-                                    SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
+                            GlassEffectContainer(spacing: 12) {
+                                GlassCard(style: .elevated) {
+                                    HStack(spacing: 0) {
+                                        SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
+                                            .glassEffectUnion(id: "summary", namespace: summaryNamespace)
+                                        Spacer()
+                                        SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
+                                            .glassEffectUnion(id: "summary", namespace: summaryNamespace)
+                                    }
                                 }
                             }
                             .listRowBackground(Color.clear)
@@ -38,7 +48,7 @@ struct HistoryView: View {
 
                         Section {
                             ForEach(store.logs) { log in
-                                GlassCard {
+                                GlassCard(style: .regular) {
                                     Button {
                                         store.requestEdit(day: log.day)
                                         selectedTab = .log
@@ -68,6 +78,9 @@ struct HistoryView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
+            .background {
+                LiquidBackdrop()
+            }
             .navigationTitle(settings.eventTitle)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -79,6 +92,8 @@ struct HistoryView: View {
                         ) {
                             Image(systemName: "square.and.arrow.up")
                         }
+                        .buttonStyle(.glassProminent)
+                        .tint(.teal)
                     }
                 }
             }
@@ -140,7 +155,6 @@ private struct SummaryItem: View {
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.title2.weight(.semibold).monospacedDigit())
-                .foregroundStyle(.mint)
         }
         .frame(maxWidth: .infinity)
     }
@@ -165,7 +179,6 @@ private struct HistoryRow: View {
 
             Text(duration)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
-                .foregroundStyle(.mint)
 
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))

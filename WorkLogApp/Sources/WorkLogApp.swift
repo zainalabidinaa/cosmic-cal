@@ -15,21 +15,23 @@ struct WorkLogApp: App {
     var body: some Scene {
         WindowGroup {
             TabView(selection: $selectedTab) {
-                Tab("Log", systemImage: "calendar.badge.plus", value: .log) {
+                Tab("Log", systemImage: "calendar.badge.plus", value: AppTab.log) {
                     LogView()
                 }
 
-                Tab("History", systemImage: "clock", value: .history) {
+                Tab("History", systemImage: "clock", value: AppTab.history) {
                     HistoryView(selectedTab: $selectedTab)
                 }
 
-                Tab("Settings", systemImage: "gearshape", value: .settings) {
+                Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
                     SettingsView()
                 }
             }
-            .tint(.mint)
-            .preferredColorScheme(.dark)
-            .toolbarColorScheme(.dark, for: .tabBar, .navigationBar)
+            .tint(.teal)
+            .tabBarMinimizeBehavior(.onScrollDown)
+            .background {
+                LiquidBackdrop()
+            }
             .environmentObject(store)
             .environmentObject(settings)
         }

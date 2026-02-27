@@ -11,19 +11,26 @@ struct LogView: View {
     @State private var successHapticTrigger = 0
     @State private var errorHapticTrigger = 0
     @State private var dismissTask: Task<Void, Never>?
+    @Namespace private var templateNamespace
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                DarkBackground()
-
-                ScrollView {
+            ScrollView {
+                GlassEffectContainer(spacing: 18) {
                     VStack(spacing: 16) {
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Label("Shift", systemImage: "calendar")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.secondary)
+                        GlassCard(style: .elevated) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Label("Shift", systemImage: "calendar")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+
+                                    Spacer()
+
+                                    Text(durationPreview)
+                                        .font(.subheadline.weight(.bold).monospacedDigit())
+                                        .foregroundStyle(.primary)
+                                }
 
                                 DatePicker("Day", selection: $day, displayedComponents: .date)
                                     .datePickerStyle(.compact)
@@ -36,7 +43,7 @@ struct LogView: View {
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 10) {
                                     Label("Templates", systemImage: "clock.badge.checkmark")
-                                        .font(.subheadline.weight(.medium))
+                                        .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.secondary)
 
                                     ScrollView(.horizontal, showsIndicators: false) {
@@ -44,7 +51,8 @@ struct LogView: View {
                                             ForEach(settings.shiftTemplates) { template in
                                                 TemplateChip(
                                                     template.label,
-                                                    isActive: isTemplateActive(template)
+                                                    isActive: isTemplateActive(template),
+                                                    namespace: templateNamespace
                                                 ) {
                                                     applyTemplate(template)
                                                 }
@@ -59,7 +67,7 @@ struct LogView: View {
                         GlassCard {
                             VStack(alignment: .leading, spacing: 10) {
                                 Label("Times", systemImage: "clock")
-                                    .font(.subheadline.weight(.medium))
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.secondary)
 
                                 DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
@@ -72,56 +80,56 @@ struct LogView: View {
                         }
 
                         if let message = store.lastSaveMessage {
-                            GlassCard {
+                            GlassCard(style: .subtle) {
                                 Label(message, systemImage: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
-                                    .font(.subheadline)
+                                    .font(.subheadline.weight(.medium))
                             }
                             .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
                         if let error = store.lastErrorMessage {
-                            GlassCard {
+                            GlassCard(style: .subtle) {
                                 Label(error, systemImage: "exclamationmark.triangle.fill")
                                     .foregroundStyle(.orange)
-                                    .font(.subheadline)
+                                    .font(.subheadline.weight(.medium))
                             }
                             .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 100)
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 100)
             }
             .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 0) {
-                    Divider().opacity(0.3)
-                    Button {
-                        guard !isSaving else { return }
-                        Task { await save() }
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isSaving {
-                                ProgressView()
-                            } else {
-                                Image(systemName: "checkmark.seal.fill")
-                            }
-                            Text(isSaving ? "Saving…" : "Save Shift")
-                                .fontWeight(.semibold)
+                Button {
+                    guard !isSaving else { return }
+                    Task { await save() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "checkmark.seal.fill")
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        Text(isSaving ? "Saving…" : "Save Shift")
+                            .fontWeight(.semibold)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.mint)
-                    .controlSize(.large)
-                    .disabled(isSaving)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .accessibilityLabel(isSaving ? "Saving shift" : "Save shift")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
                 }
-                .background(.ultraThinMaterial)
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .tint(.teal)
+                .disabled(isSaving)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .accessibilityLabel(isSaving ? "Saving shift" : "Save shift")
+            }
+            .scrollContentBackground(.hidden)
+            .background {
+                LiquidBackdrop()
             }
             .navigationTitle(settings.eventTitle)
             .navigationBarTitleDisplayMode(.large)
@@ -195,6 +203,20 @@ struct LogView: View {
             store.lastErrorMessage = nil
         }
     }
+
+    private var durationPreview: String {
+        let seconds = max(0, endTime.timeIntervalSince(startTime))
+        let totalMinutes = Int(seconds) / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 && minutes > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if hours > 0 {
+            return "\(hours)h"
+        } else {
+            return "\(minutes)m"
+        }
+    }
 }
 
 // MARK: - Template Chip
@@ -202,11 +224,13 @@ struct LogView: View {
 private struct TemplateChip: View {
     private let label: String
     private let isActive: Bool
+    private let namespace: Namespace.ID
     private let action: () -> Void
 
-    init(_ label: String, isActive: Bool, action: @escaping () -> Void) {
+    init(_ label: String, isActive: Bool, namespace: Namespace.ID, action: @escaping () -> Void) {
         self.label = label
         self.isActive = isActive
+        self.namespace = namespace
         self.action = action
     }
 
@@ -214,24 +238,12 @@ private struct TemplateChip: View {
         Button(action: action) {
             Text(label)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(isActive ? .mint : .primary)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
-                .background(
-                    isActive
-                        ? AnyShapeStyle(Color.mint.opacity(0.15))
-                        : AnyShapeStyle(.ultraThinMaterial),
-                    in: .capsule
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            isActive ? Color.mint.opacity(0.4) : .white.opacity(0.08),
-                            lineWidth: 1
-                        )
-                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(isActive ? .glassProminent : .glass)
+        .tint(isActive ? .teal : .primary)
+        .glassEffectUnion(id: "templatechips", namespace: namespace)
         .accessibilityLabel("Shift \(label)")
     }
 }
