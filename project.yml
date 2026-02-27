@@ -26,7 +26,6 @@ targets:
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 2F32KDH422
     dependencies:
       - sdk: EventKit.framework
 
