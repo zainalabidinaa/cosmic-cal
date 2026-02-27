@@ -7,6 +7,7 @@ struct WorkLog: Identifiable, Codable, Equatable {
     var start: Date
     var end: Date
     var calendarEventIdentifier: String?
+    var calDAVUID: String?
     var updatedAt: Date
 
     init(
@@ -15,6 +16,7 @@ struct WorkLog: Identifiable, Codable, Equatable {
         start: Date,
         end: Date,
         calendarEventIdentifier: String? = nil,
+        calDAVUID: String? = nil,
         updatedAt: Date = Date()
     ) {
         self.id = id
@@ -22,6 +24,7 @@ struct WorkLog: Identifiable, Codable, Equatable {
         self.start = start
         self.end = end
         self.calendarEventIdentifier = calendarEventIdentifier
+        self.calDAVUID = calDAVUID
         self.updatedAt = updatedAt
     }
 

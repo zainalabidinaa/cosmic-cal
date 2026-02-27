@@ -25,6 +25,11 @@ final class AppSettings: ObservableObject {
     @Published var calendarName: String { didSet { persistIfReady() } }
     @Published var eventTitle: String { didSet { persistIfReady() } }
     @Published var shiftTemplates: [ShiftTemplate] { didSet { persistIfReady() } }
+    @Published var iCloudEmail: String { didSet { persistIfReady() } }
+
+    var calDAVConfigured: Bool {
+        !iCloudEmail.isEmpty && KeychainHelper.loadPassword(account: iCloudEmail) != nil
+    }
 
     private var ready = false
 
@@ -35,16 +40,21 @@ final class AppSettings: ObservableObject {
         _calendarName = Published(initialValue: stored.calendarName)
         _eventTitle = Published(initialValue: stored.eventTitle)
         _shiftTemplates = Published(initialValue: stored.shiftTemplates)
+        _iCloudEmail = Published(initialValue: stored.iCloudEmail)
         ready = true
     }
 
     func resetToDefaults() {
+        if !iCloudEmail.isEmpty {
+            KeychainHelper.deletePassword(account: iCloudEmail)
+        }
         let defaults = SettingsData()
         destinationAddress = defaults.destinationAddress
         originFallbackAddress = defaults.originFallbackAddress
         calendarName = defaults.calendarName
         eventTitle = defaults.eventTitle
         shiftTemplates = defaults.shiftTemplates
+        iCloudEmail = defaults.iCloudEmail
     }
 
     private func persistIfReady() {
@@ -54,7 +64,8 @@ final class AppSettings: ObservableObject {
             originFallbackAddress: originFallbackAddress,
             calendarName: calendarName,
             eventTitle: eventTitle,
-            shiftTemplates: shiftTemplates
+            shiftTemplates: shiftTemplates,
+            iCloudEmail: iCloudEmail
         )
         guard let encoded = try? JSONEncoder().encode(payload) else { return }
         UserDefaults.standard.set(encoded, forKey: "AppSettingsV1")
@@ -75,4 +86,5 @@ private struct SettingsData: Codable {
     var calendarName = "Arbete"
     var eventTitle = "LMB Lund"
     var shiftTemplates = ShiftTemplate.defaults
+    var iCloudEmail = ""
 }

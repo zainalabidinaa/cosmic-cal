@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @State private var showingAddTemplate = false
+    @State private var appPassword = ""
+    @State private var passwordLoaded = false
 
     var body: some View {
         NavigationStack {
@@ -10,6 +12,36 @@ struct SettingsView: View {
                 CosmicBackground()
 
                 Form {
+                    Section {
+                        TextField("Apple ID Email", text: $settings.iCloudEmail)
+                            .textContentType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+
+                        SecureField("App-Specific Password", text: $appPassword)
+                            .textContentType(.password)
+                            .onChange(of: appPassword) { _, newValue in
+                                guard !settings.iCloudEmail.isEmpty else { return }
+                                if newValue.isEmpty {
+                                    KeychainHelper.deletePassword(account: settings.iCloudEmail)
+                                } else {
+                                    KeychainHelper.savePassword(newValue, account: settings.iCloudEmail)
+                                }
+                            }
+
+                        if settings.calDAVConfigured {
+                            Label("CalDAV enabled -- events will include travel time.", systemImage: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        } else {
+                            Text("Enter your Apple ID and an app-specific password (appleid.apple.com) to sync events via CalDAV with full travel time support.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } header: {
+                        Text("iCloud CalDAV")
+                    }
+
                     Section("Calendar Event") {
                         TextField("Event Title", text: $settings.eventTitle)
                         TextField("Calendar Name", text: $settings.calendarName)
@@ -38,6 +70,7 @@ struct SettingsView: View {
                     Section {
                         Button("Reset to Defaults", role: .destructive) {
                             settings.resetToDefaults()
+                            appPassword = ""
                         }
                     }
                 }
@@ -45,6 +78,13 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                guard !passwordLoaded else { return }
+                passwordLoaded = true
+                if !settings.iCloudEmail.isEmpty {
+                    appPassword = KeychainHelper.loadPassword(account: settings.iCloudEmail) ?? ""
+                }
+            }
             .sheet(isPresented: $showingAddTemplate) {
                 AddTemplateSheet(settings: settings)
             }

@@ -62,11 +62,15 @@ final class WorkLogStore: ObservableObject {
         let logToSave = existing ?? WorkLog(day: dayStart, start: startDate, end: endDate)
 
         do {
-            try await calendarSync.requestAccessIfNeeded()
-            let eventId = try await calendarSync.upsertEvent(for: logToSave)
+            let result = try await calendarSync.syncEvent(for: logToSave)
 
             var saved = logToSave
-            saved.calendarEventIdentifier = eventId
+            switch result {
+            case .eventKit(let eventId):
+                saved.calendarEventIdentifier = eventId
+            case .calDAV(let uid):
+                saved.calDAVUID = uid
+            }
             saved.updatedAt = Date()
 
             logs.removeAll(where: { $0.dayKey == saved.dayKey })
@@ -74,18 +78,23 @@ final class WorkLogStore: ObservableObject {
             logs.sort(by: { $0.day > $1.day })
 
             try persistToDisk()
-            lastSaveMessage = "Saved and added to Calendar (\(settings.calendarName))."
+
+            let method = calendarSync.calDAVAvailable ? "CalDAV with travel time" : settings.calendarName
+            lastSaveMessage = "Saved and synced via \(method)."
         } catch {
             logs.removeAll(where: { $0.dayKey == logToSave.dayKey })
             logs.append(logToSave)
             logs.sort(by: { $0.day > $1.day })
             try? persistToDisk()
 
-            lastErrorMessage = "Saved locally, but calendar sync failed: \(error.localizedDescription)"
+            lastErrorMessage = "Saved locally, but sync failed: \(error.localizedDescription)"
         }
     }
 
     func deleteLog(_ log: WorkLog) {
+        if let uid = log.calDAVUID {
+            Task { await calendarSync.deleteCalDAVEvent(uid: uid) }
+        }
         if let eventId = log.calendarEventIdentifier {
             calendarSync.deleteEvent(identifier: eventId)
         }

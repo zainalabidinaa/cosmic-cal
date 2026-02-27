@@ -17,10 +17,16 @@ enum CalendarSyncError: LocalizedError {
     }
 }
 
+enum SyncResult {
+    case eventKit(String)
+    case calDAV(String)
+}
+
 @MainActor
 final class CalendarSync {
     private let eventStore = EKEventStore()
     private let locationClient = LocationClient()
+    private let calDAVClient = CalDAVClient()
     private let settings: AppSettings
 
     private let fallbackTravelTime: TimeInterval = 45 * 60
@@ -28,6 +34,85 @@ final class CalendarSync {
     init(settings: AppSettings) {
         self.settings = settings
     }
+
+    var calDAVAvailable: Bool { settings.calDAVConfigured }
+
+    // MARK: - Unified Sync
+
+    func syncEvent(for log: WorkLog) async throws -> SyncResult {
+        if let credentials = makeCalDAVCredentials() {
+            let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
+            return .calDAV(uid)
+        }
+
+        try await requestAccessIfNeeded()
+        let eventId = try await upsertEvent(for: log)
+        return .eventKit(eventId)
+    }
+
+    func deleteCalDAVEvent(uid: String) async {
+        guard let credentials = makeCalDAVCredentials() else { return }
+        do {
+            let calURL = try await calDAVClient.calendarURL(
+                for: settings.calendarName,
+                credentials: credentials
+            )
+            try await calDAVClient.deleteEvent(calendarURL: calURL, uid: uid, credentials: credentials)
+        } catch {
+            // Best-effort; the local log is still removed.
+        }
+    }
+
+    private func makeCalDAVCredentials() -> CalDAVCredentials? {
+        let email = settings.iCloudEmail
+        guard !email.isEmpty, let password = KeychainHelper.loadPassword(account: email) else {
+            return nil
+        }
+        return CalDAVCredentials(email: email, appPassword: password)
+    }
+
+    // MARK: - CalDAV Path
+
+    private func upsertViaCalDAV(for log: WorkLog, credentials: CalDAVCredentials) async throws -> String {
+        let uid = log.calDAVUID ?? (UUID().uuidString + "@worklog")
+
+        let destinationCoord = try? await geocode(address: settings.destinationAddress)
+        let origin = await resolveOriginLocation()
+        let originCoord = origin?.location.coordinate
+
+        let destinationLoc = destinationCoord.map {
+            CLLocation(latitude: $0.latitude, longitude: $0.longitude)
+        }
+        let travelRaw = await estimateTravelTimeSeconds(
+            from: origin, to: destinationLoc, arrivalDate: log.start
+        ) ?? fallbackTravelTime
+        let travelMinutes = max(1, Int((travelRaw / 60).rounded()))
+
+        let ics = ICSBuilder.buildEvent(
+            uid: uid,
+            title: settings.eventTitle,
+            start: log.start,
+            end: log.end,
+            location: settings.destinationAddress,
+            locationCoordinate: destinationCoord,
+            travelStartTitle: origin?.title,
+            travelStartAddress: settings.originFallbackAddress,
+            travelStartCoordinate: originCoord,
+            travelDurationMinutes: travelMinutes
+        )
+
+        let calURL = try await calDAVClient.calendarURL(
+            for: settings.calendarName,
+            credentials: credentials
+        )
+        try await calDAVClient.putEvent(
+            calendarURL: calURL, uid: uid, icsData: ics, credentials: credentials
+        )
+
+        return uid
+    }
+
+    // MARK: - EventKit Path
 
     func requestAccessIfNeeded() async throws {
         let status = EKEventStore.authorizationStatus(for: .event)
