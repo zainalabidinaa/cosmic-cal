@@ -40,18 +40,19 @@ final class CalendarSync {
     // MARK: - Unified Sync
 
     func syncEvent(for log: WorkLog) async throws -> SyncResult {
-        if let credentials = makeCalDAVCredentials() {
-            do {
+        // Prefer EventKit first for the most reliable travel-time behavior on device.
+        do {
+            try await requestAccessIfNeeded()
+            let eventId = try await upsertEvent(for: log)
+            return .eventKit(eventId)
+        } catch {
+            // If EventKit fails (e.g. permission denied), fall back to CalDAV when configured.
+            if let credentials = makeCalDAVCredentials() {
                 let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
                 return .calDAV(uid)
-            } catch {
-                // CalDAV failed -- fall through to EventKit rather than losing the sync entirely.
             }
+            throw error
         }
-
-        try await requestAccessIfNeeded()
-        let eventId = try await upsertEvent(for: log)
-        return .eventKit(eventId)
     }
 
     func deleteCalDAVEvent(uid: String) async {
@@ -182,6 +183,7 @@ final class CalendarSync {
         // selecting a hardcoded minute value.
         let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin, to: structuredDestination.geoLocation, arrivalDate: log.start) ?? fallbackTravelTime
         let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
+        event.travelTime = travelTimeSeconds
 
         applyDefaultAlarms(to: event, travelTime: travelTimeSeconds)
 

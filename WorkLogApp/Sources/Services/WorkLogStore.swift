@@ -79,7 +79,13 @@ final class WorkLogStore: ObservableObject {
 
             try persistToDisk()
 
-            let method = calendarSync.calDAVAvailable ? "CalDAV with travel time" : settings.calendarName
+            let method: String
+            switch result {
+            case .eventKit:
+                method = settings.calendarName
+            case .calDAV:
+                method = "CalDAV"
+            }
             lastSaveMessage = "Saved and synced via \(method)."
         } catch {
             logs.removeAll(where: { $0.dayKey == logToSave.dayKey })
