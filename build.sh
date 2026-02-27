@@ -22,7 +22,7 @@ echo "Xcode $XCODE_VER — OK"
 echo "Generating Xcode project..."
 xcodegen generate --spec project.yml
 
-DESTINATION="${1:-platform=iOS,name=Zain Alabidin's iPhone}"
+DESTINATION="${1:-platform=iOS,id=00008130-000145483E21001C}"
 
 echo "Building for: $DESTINATION"
 xcodebuild \
