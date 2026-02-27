@@ -11,22 +11,26 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                CosmicBackground()
-
+            Group {
                 if store.logs.isEmpty {
                     ContentUnavailableView(
-                        "No Work Logs Yet",
+                        "No Shifts Yet",
                         systemImage: "clock",
-                        description: Text("Save a shift in the Log tab and it'll show up here.")
+                        description: Text("Save a shift in the Log tab to get started.")
                     )
-                    .padding(.horizontal, 24)
                 } else {
                     List {
-                        summarySection
+                        Section {
+                            HStack {
+                                SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
+                                Spacer()
+                                SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
 
-                        ForEach(store.logs) { log in
-                            GlassCard {
+                        Section("Shifts") {
+                            ForEach(store.logs) { log in
                                 Button {
                                     store.requestEdit(day: log.day)
                                     selectedTab = .log
@@ -36,27 +40,20 @@ struct HistoryView: View {
                                         time: "\(Formatters.time.string(from: log.start)) – \(Formatters.time.string(from: log.end))",
                                         duration: log.durationLabel
                                     )
-                                    .contentShape(Rectangle())
                                 }
-                                .buttonStyle(.plain)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button("Delete", role: .destructive) {
-                                    logToDelete = log
-                                    showDeleteConfirmation = true
+                                .tint(.primary)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button("Delete", role: .destructive) {
+                                        logToDelete = log
+                                        showDeleteConfirmation = true
+                                    }
                                 }
                             }
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 7, leading: 16, bottom: 7, trailing: 16))
                         }
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle(settings.eventTitle)
-            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !store.logs.isEmpty {
@@ -69,55 +66,34 @@ struct HistoryView: View {
                     }
                 }
             }
-            .alert("Delete Log?", isPresented: $showDeleteConfirmation, presenting: logToDelete) { log in
+            .alert("Delete Shift?", isPresented: $showDeleteConfirmation, presenting: logToDelete) { log in
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
-                    withAnimation {
-                        store.deleteLog(log)
-                    }
+                    withAnimation { store.deleteLog(log) }
                 }
             } message: { log in
-                Text("Remove the log for \(Formatters.day.string(from: log.day))?")
+                Text("Remove the shift on \(Formatters.day.string(from: log.day))?")
             }
         }
     }
 
-    // MARK: - Summary
-
-    private var summarySection: some View {
-        GlassCard {
-            HStack(spacing: 0) {
-                SummaryItem(title: "This Week", value: formatHours(hoursThisWeek))
-                Spacer()
-                SummaryItem(title: "This Month", value: formatHours(hoursThisMonth))
-            }
-        }
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-        .accessibilityElement(children: .combine)
-    }
+    // MARK: - Calculations
 
     private var hoursThisWeek: Double {
         let start = Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
-        return store.logs
-            .filter { $0.day >= start }
-            .reduce(0) { $0 + $1.duration / 3600 }
+        return store.logs.filter { $0.day >= start }.reduce(0) { $0 + $1.duration / 3600 }
     }
 
     private var hoursThisMonth: Double {
         let start = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
-        return store.logs
-            .filter { $0.day >= start }
-            .reduce(0) { $0 + $1.duration / 3600 }
+        return store.logs.filter { $0.day >= start }.reduce(0) { $0 + $1.duration / 3600 }
     }
 
     private func formatHours(_ hours: Double) -> String {
         if hours == 0 { return "0h" }
         let h = Int(hours)
         let m = Int((hours - Double(h)) * 60)
-        if m == 0 { return "\(h)h" }
-        return "\(h)h \(m)m"
+        return m == 0 ? "\(h)h" : "\(h)h \(m)m"
     }
 
     // MARK: - CSV Export
@@ -161,10 +137,9 @@ private struct HistoryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(day)
                     .font(.headline)
-
                 Text(time)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -175,10 +150,6 @@ private struct HistoryRow: View {
             Text(duration)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(.mint)
-
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)

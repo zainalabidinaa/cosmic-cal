@@ -15,28 +15,19 @@ struct WorkLogApp: App {
     var body: some Scene {
         WindowGroup {
             TabView(selection: $selectedTab) {
-                LogView()
-                    .tabItem {
-                        Label("Log", systemImage: "calendar.badge.plus")
-                    }
-                    .tag(AppTab.log)
+                Tab("Log", systemImage: "calendar.badge.plus", value: .log) {
+                    LogView()
+                }
 
-                HistoryView(selectedTab: $selectedTab)
-                    .tabItem {
-                        Label("History", systemImage: "clock")
-                    }
-                    .tag(AppTab.history)
+                Tab("History", systemImage: "clock", value: .history) {
+                    HistoryView(selectedTab: $selectedTab)
+                }
 
-                SettingsView()
-                    .tabItem {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                    .tag(AppTab.settings)
+                Tab("Settings", systemImage: "gearshape", value: .settings) {
+                    SettingsView()
+                }
             }
             .tint(.mint)
-            .toolbarColorScheme(.dark, for: .navigationBar, .tabBar)
-            .toolbarBackground(.visible, for: .navigationBar, .tabBar)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar, .tabBar)
             .environmentObject(store)
             .environmentObject(settings)
         }
@@ -44,7 +35,5 @@ struct WorkLogApp: App {
 }
 
 enum AppTab: Hashable {
-    case log
-    case history
-    case settings
+    case log, history, settings
 }

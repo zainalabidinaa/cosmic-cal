@@ -40,11 +40,11 @@
 	<true/>
 	<key>NSCalendarsUsageDescription</key>
 	<string>LMB Lund adds your shifts to your calendar.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>LMB Lund needs full calendar access to create and update shift events with travel time.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to calculate travel time to LMB Lund for calendar alerts.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>UIUserInterfaceStyle</key>
-	<string>Dark</string>
 </dict>
 </plist>

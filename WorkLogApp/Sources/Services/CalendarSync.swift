@@ -122,29 +122,7 @@ final class CalendarSync {
         case .denied, .restricted:
             throw CalendarSyncError.permissionDenied
         case .notDetermined:
-            let granted: Bool
-            if #available(iOS 17.0, *) {
-                granted = try await withCheckedThrowingContinuation { continuation in
-                    eventStore.requestFullAccessToEvents { isGranted, error in
-                        if let error {
-                            continuation.resume(throwing: error)
-                            return
-                        }
-                        continuation.resume(returning: isGranted)
-                    }
-                }
-            } else {
-                granted = try await withCheckedThrowingContinuation { continuation in
-                    eventStore.requestAccess(to: .event) { isGranted, error in
-                        if let error {
-                            continuation.resume(throwing: error)
-                            return
-                        }
-                        continuation.resume(returning: isGranted)
-                    }
-                }
-            }
-
+            let granted = try await eventStore.requestFullAccessToEvents()
             if !granted {
                 throw CalendarSyncError.permissionDenied
             }
