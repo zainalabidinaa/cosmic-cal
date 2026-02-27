@@ -80,7 +80,9 @@ struct LogView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                 }
-                .glassEffect(.regular.interactive().tint(.mint.opacity(0.4)), in: .capsule)
+                .buttonStyle(.borderedProminent)
+                .tint(.mint)
+                .controlSize(.large)
                 .disabled(isSaving)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
