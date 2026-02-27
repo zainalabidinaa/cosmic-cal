@@ -41,8 +41,12 @@ final class CalendarSync {
 
     func syncEvent(for log: WorkLog) async throws -> SyncResult {
         if let credentials = makeCalDAVCredentials() {
-            let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
-            return .calDAV(uid)
+            do {
+                let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
+                return .calDAV(uid)
+            } catch {
+                // CalDAV failed -- fall through to EventKit rather than losing the sync entirely.
+            }
         }
 
         try await requestAccessIfNeeded()

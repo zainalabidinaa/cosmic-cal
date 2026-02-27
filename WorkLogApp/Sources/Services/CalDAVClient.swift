@@ -8,6 +8,10 @@ struct CalDAVCredentials {
         let combined = "\(email):\(appPassword)"
         return "Basic \(Data(combined.utf8).base64EncodedString())"
     }
+
+    var urlCredential: URLCredential {
+        URLCredential(user: email, password: appPassword, persistence: .forSession)
+    }
 }
 
 enum CalDAVError: LocalizedError {
@@ -28,13 +32,16 @@ enum CalDAVError: LocalizedError {
 
 actor CalDAVClient {
     private let session: URLSession
+    private let authDelegate: AuthChallengeDelegate
     private let baseURL = URL(string: "https://caldav.icloud.com/")!
     private var cachedCalendarURLs: [String: URL] = [:]
 
     init() {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 30
-        self.session = URLSession(configuration: config)
+        let delegate = AuthChallengeDelegate()
+        self.authDelegate = delegate
+        self.session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
     }
 
     func calendarURL(for calendarName: String, credentials: CalDAVCredentials) async throws -> URL {
@@ -59,6 +66,7 @@ actor CalDAVClient {
         request.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
         request.httpBody = Data(icsData.utf8)
 
+        authDelegate.credential = credentials.urlCredential
         let (_, response) = try await session.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200...299).contains(code) else {
@@ -73,9 +81,9 @@ actor CalDAVClient {
         request.httpMethod = "DELETE"
         request.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
 
+        authDelegate.credential = credentials.urlCredential
         let (_, response) = try await session.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-        // 204 No Content = success, 404 = already gone (both acceptable)
         guard code == 200 || code == 204 || code == 404 else {
             if code == 401 { throw CalDAVError.invalidCredentials }
             throw CalDAVError.serverError(code)
@@ -132,7 +140,6 @@ actor CalDAVClient {
         let xml = try await propfind(url: homeURL, body: body, depth: "1", credentials: credentials)
         let stripped = stripNamespacePrefixes(xml)
 
-        // Split into <response> blocks and find the one that is a calendar with the right name.
         let blocks = stripped.components(separatedBy: "<response>").dropFirst()
         for block in blocks {
             let isCalendar = block.contains("<calendar")
@@ -157,6 +164,7 @@ actor CalDAVClient {
         request.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
         request.httpBody = Data(body.utf8)
 
+        authDelegate.credential = credentials.urlCredential
         let (data, response) = try await session.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard code == 207 || code == 200 else {
@@ -196,5 +204,29 @@ actor CalDAVClient {
             return URL(string: href) ?? baseURL
         }
         return URL(string: href, relativeTo: baseURL)?.absoluteURL ?? baseURL.appendingPathComponent(href)
+    }
+}
+
+// MARK: - URLSession Auth Challenge Handler
+
+/// Responds to HTTP Basic/Digest auth challenges from iCloud's CalDAV server.
+/// iCloud redirects between hosts and issues 401 challenges that require a proper
+/// delegate response -- setting the Authorization header alone is not sufficient.
+private final class AuthChallengeDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    var credential: URLCredential?
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        let method = challenge.protectionSpace.authenticationMethod
+        if (method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest),
+           let credential {
+            completionHandler(.useCredential, credential)
+        } else {
+            completionHandler(.performDefaultHandling, nil)
+        }
     }
 }
