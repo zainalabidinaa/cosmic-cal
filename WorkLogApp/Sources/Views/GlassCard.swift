@@ -36,6 +36,7 @@ struct GlassCard<Content: View>: View {
                     .overlay {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
+                            .allowsHitTesting(false)
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -47,6 +48,7 @@ struct GlassCard<Content: View>: View {
                                 )
                             )
                             .blendMode(.screen)
+                            .allowsHitTesting(false)
                     }
             } else {
                 fallbackCard
@@ -64,6 +66,7 @@ struct GlassCard<Content: View>: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
+                    .allowsHitTesting(false)
             }
     }
 

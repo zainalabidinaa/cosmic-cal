@@ -40,19 +40,19 @@ final class CalendarSync {
     // MARK: - Unified Sync
 
     func syncEvent(for log: WorkLog) async throws -> SyncResult {
-        // Prefer EventKit first for the most reliable travel-time behavior on device.
-        do {
-            try await requestAccessIfNeeded()
-            let eventId = try await upsertEvent(for: log)
-            return .eventKit(eventId)
-        } catch {
-            // If EventKit fails (e.g. permission denied), fall back to CalDAV when configured.
-            if let credentials = makeCalDAVCredentials() {
+        // Prefer CalDAV when configured to preserve Apple's native travel-time metadata.
+        if let credentials = makeCalDAVCredentials() {
+            do {
                 let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
                 return .calDAV(uid)
+            } catch {
+                // Fall through to EventKit if CalDAV fails.
             }
-            throw error
         }
+
+        try await requestAccessIfNeeded()
+        let eventId = try await upsertEvent(for: log)
+        return .eventKit(eventId)
     }
 
     func deleteCalDAVEvent(uid: String) async {
@@ -88,6 +88,8 @@ final class CalendarSync {
         let destinationLoc = destinationCoord.map {
             CLLocation(latitude: $0.latitude, longitude: $0.longitude)
         }
+        let useCurrentLocationStart = origin?.title == "Current Location"
+        let travelStartAddress = origin?.title ?? settings.originFallbackAddress
         let travelRaw = await estimateTravelTimeSeconds(
             from: origin, to: destinationLoc, arrivalDate: log.start
         ) ?? fallbackTravelTime
@@ -101,9 +103,10 @@ final class CalendarSync {
             location: settings.destinationAddress,
             locationCoordinate: destinationCoord,
             travelStartTitle: origin?.title,
-            travelStartAddress: settings.originFallbackAddress,
+            travelStartAddress: travelStartAddress,
             travelStartCoordinate: originCoord,
-            travelDurationMinutes: travelMinutes
+            travelDurationMinutes: travelMinutes,
+            travelStartIsCurrentLocation: useCurrentLocationStart
         )
 
         let calURL = try await calDAVClient.calendarURL(

@@ -250,6 +250,7 @@ private struct SettingsTextFieldRow<Content: View>: View {
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(.white.opacity(0.24), lineWidth: 1)
+                        .allowsHitTesting(false)
                 }
         }
     }
@@ -276,6 +277,7 @@ private struct SettingsValueRow<Content: View>: View {
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(.white.opacity(0.24), lineWidth: 1)
+                        .allowsHitTesting(false)
                 }
         }
     }

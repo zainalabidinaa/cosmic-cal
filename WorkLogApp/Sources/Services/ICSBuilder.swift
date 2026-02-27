@@ -17,7 +17,8 @@ enum ICSBuilder {
         travelStartTitle: String?,
         travelStartAddress: String,
         travelStartCoordinate: CLLocationCoordinate2D?,
-        travelDurationMinutes: Int
+        travelDurationMinutes: Int,
+        travelStartIsCurrentLocation: Bool
     ) -> String {
         let dtstart = icsDateString(from: start)
         let dtend = icsDateString(from: end)
@@ -51,7 +52,9 @@ enum ICSBuilder {
             + ";X-ADDRESS=\(icsParamEscape(travelStartAddress))"
             + ";X-TITLE=\(icsParamEscape(startTitle))"
             + ":"
-        if let coord = travelStartCoordinate {
+        if travelStartIsCurrentLocation {
+            travelLine += "current-location"
+        } else if let coord = travelStartCoordinate {
             travelLine += "geo:\(coord.latitude),\(coord.longitude)"
         }
         lines.append(travelLine)
