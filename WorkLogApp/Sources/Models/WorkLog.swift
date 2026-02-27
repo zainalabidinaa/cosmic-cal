@@ -28,6 +28,23 @@ struct WorkLog: Identifiable, Codable, Equatable {
     var dayKey: String {
         DateKeyFormatter.shared.string(from: day)
     }
+
+    var duration: TimeInterval {
+        end.timeIntervalSince(start)
+    }
+
+    var durationLabel: String {
+        let totalMinutes = Int(duration) / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 && minutes > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if hours > 0 {
+            return "\(hours)h"
+        } else {
+            return "\(minutes)m"
+        }
+    }
 }
 
 final class DateKeyFormatter {
@@ -76,4 +93,20 @@ extension Date {
         components.second = 0
         return calendar.date(from: components) ?? day
     }
+}
+
+enum Formatters {
+    static let day: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+
+    static let time: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
 }

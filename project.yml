@@ -27,3 +27,11 @@ targets:
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
     dependencies:
       - sdk: EventKit.framework
+
+  WorkLogTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: WorkLogTests
+    dependencies:
+      - target: WorkLog

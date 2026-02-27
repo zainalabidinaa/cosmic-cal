@@ -21,10 +21,13 @@ enum CalendarSyncError: LocalizedError {
 final class CalendarSync {
     private let eventStore = EKEventStore()
     private let locationClient = LocationClient()
+    private let settings: AppSettings
 
-    private let destinationAddress = "Akutgatan 8, Lund"
-    private let originFallbackAddress = "Traktörsgatan 11, Helsingborg"
     private let fallbackTravelTime: TimeInterval = 45 * 60
+
+    init(settings: AppSettings) {
+        self.settings = settings
+    }
 
     func requestAccessIfNeeded() async throws {
         let status = EKEventStore.authorizationStatus(for: .event)
@@ -65,8 +68,14 @@ final class CalendarSync {
         }
     }
 
+    func deleteEvent(identifier: String) {
+        guard let event = eventStore.event(withIdentifier: identifier) else { return }
+        try? eventStore.remove(event, span: .thisEvent, commit: true)
+    }
+
     func upsertEvent(for log: WorkLog) async throws -> String {
-        let calendar = findPreferredCalendar(named: "Arbete") ?? eventStore.defaultCalendarForNewEvents
+        let calendarName = settings.calendarName
+        let calendar = findPreferredCalendar(named: calendarName) ?? eventStore.defaultCalendarForNewEvents
         guard let calendar else {
             throw CalendarSyncError.noWritableCalendar
         }
@@ -80,8 +89,9 @@ final class CalendarSync {
 
         let event = EKEvent(eventStore: eventStore)
 
+        let destinationAddress = settings.destinationAddress
         event.calendar = calendar
-        event.title = "LMB Lund"
+        event.title = settings.eventTitle
         event.startDate = log.start
         event.endDate = log.end
 
@@ -163,9 +173,10 @@ final class CalendarSync {
             return (title: "Current Location", location: current)
         }
 
-        if let fallbackCoordinate = try? await geocode(address: originFallbackAddress) {
+        let fallbackAddress = settings.originFallbackAddress
+        if let fallbackCoordinate = try? await geocode(address: fallbackAddress) {
             let fallback = CLLocation(latitude: fallbackCoordinate.latitude, longitude: fallbackCoordinate.longitude)
-            return (title: originFallbackAddress, location: fallback)
+            return (title: fallbackAddress, location: fallback)
         }
 
         return nil

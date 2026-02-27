@@ -1,0 +1,78 @@
+import Foundation
+
+struct ShiftTemplate: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var startHour: Int
+    var startMinute: Int
+    var endHour: Int
+    var endMinute: Int
+
+    var label: String {
+        String(format: "%02d:%02d–%02d:%02d", startHour, startMinute, endHour, endMinute)
+    }
+
+    static let defaults: [ShiftTemplate] = [
+        ShiftTemplate(startHour: 8, startMinute: 0, endHour: 16, endMinute: 30),
+        ShiftTemplate(startHour: 8, startMinute: 30, endHour: 17, endMinute: 0),
+        ShiftTemplate(startHour: 10, startMinute: 10, endHour: 19, endMinute: 0),
+    ]
+}
+
+@MainActor
+final class AppSettings: ObservableObject {
+    @Published var destinationAddress: String { didSet { persistIfReady() } }
+    @Published var originFallbackAddress: String { didSet { persistIfReady() } }
+    @Published var calendarName: String { didSet { persistIfReady() } }
+    @Published var eventTitle: String { didSet { persistIfReady() } }
+    @Published var shiftTemplates: [ShiftTemplate] { didSet { persistIfReady() } }
+
+    private var ready = false
+
+    init() {
+        let stored = Self.loadFromDisk()
+        _destinationAddress = Published(initialValue: stored.destinationAddress)
+        _originFallbackAddress = Published(initialValue: stored.originFallbackAddress)
+        _calendarName = Published(initialValue: stored.calendarName)
+        _eventTitle = Published(initialValue: stored.eventTitle)
+        _shiftTemplates = Published(initialValue: stored.shiftTemplates)
+        ready = true
+    }
+
+    func resetToDefaults() {
+        let defaults = SettingsData()
+        destinationAddress = defaults.destinationAddress
+        originFallbackAddress = defaults.originFallbackAddress
+        calendarName = defaults.calendarName
+        eventTitle = defaults.eventTitle
+        shiftTemplates = defaults.shiftTemplates
+    }
+
+    private func persistIfReady() {
+        guard ready else { return }
+        let payload = SettingsData(
+            destinationAddress: destinationAddress,
+            originFallbackAddress: originFallbackAddress,
+            calendarName: calendarName,
+            eventTitle: eventTitle,
+            shiftTemplates: shiftTemplates
+        )
+        guard let encoded = try? JSONEncoder().encode(payload) else { return }
+        UserDefaults.standard.set(encoded, forKey: "AppSettingsV1")
+    }
+
+    private static func loadFromDisk() -> SettingsData {
+        guard let data = UserDefaults.standard.data(forKey: "AppSettingsV1"),
+              let decoded = try? JSONDecoder().decode(SettingsData.self, from: data) else {
+            return SettingsData()
+        }
+        return decoded
+    }
+}
+
+private struct SettingsData: Codable {
+    var destinationAddress = "Akutgatan 8, Lund"
+    var originFallbackAddress = "Traktörsgatan 11, Helsingborg"
+    var calendarName = "Arbete"
+    var eventTitle = "LMB Lund"
+    var shiftTemplates = ShiftTemplate.defaults
+}

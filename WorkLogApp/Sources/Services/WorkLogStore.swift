@@ -8,7 +8,8 @@ final class WorkLogStore: ObservableObject {
     @Published var lastSaveMessage: String?
     @Published var lastErrorMessage: String?
 
-    private let calendarSync = CalendarSync()
+    let settings: AppSettings
+    private let calendarSync: CalendarSync
 
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
@@ -23,7 +24,9 @@ final class WorkLogStore: ObservableObject {
         return decoder
     }()
 
-    init() {
+    init(settings: AppSettings) {
+        self.settings = settings
+        self.calendarSync = CalendarSync(settings: settings)
         loadFromDisk()
     }
 
@@ -71,9 +74,8 @@ final class WorkLogStore: ObservableObject {
             logs.sort(by: { $0.day > $1.day })
 
             try persistToDisk()
-            lastSaveMessage = "Saved and added to Calendar (Arbete)."
+            lastSaveMessage = "Saved and added to Calendar (\(settings.calendarName))."
         } catch {
-            // Still save locally even if calendar fails.
             logs.removeAll(where: { $0.dayKey == logToSave.dayKey })
             logs.append(logToSave)
             logs.sort(by: { $0.day > $1.day })
@@ -84,6 +86,9 @@ final class WorkLogStore: ObservableObject {
     }
 
     func deleteLog(_ log: WorkLog) {
+        if let eventId = log.calendarEventIdentifier {
+            calendarSync.deleteEvent(identifier: eventId)
+        }
         logs.removeAll(where: { $0.id == log.id })
         try? persistToDisk()
     }
