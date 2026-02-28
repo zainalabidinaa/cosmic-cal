@@ -98,16 +98,15 @@ final class AppSettings: ObservableObject {
 
     private func persistIfReady() {
         guard ready else { return }
-        let payload = SettingsData(
-            destinationAddress: destinationAddress,
-            travelOriginMode: travelOriginMode,
-            travelTimeMode: travelTimeMode,
-            originFallbackAddress: originFallbackAddress,
-            calendarName: calendarName,
-            eventTitle: eventTitle,
-            shiftTemplates: shiftTemplates,
-            iCloudEmail: iCloudEmail
-        )
+        var payload = SettingsData()
+        payload.destinationAddress = destinationAddress
+        payload.travelOriginMode = travelOriginMode
+        payload.travelTimeMode = travelTimeMode
+        payload.originFallbackAddress = originFallbackAddress
+        payload.calendarName = calendarName
+        payload.eventTitle = eventTitle
+        payload.shiftTemplates = shiftTemplates
+        payload.iCloudEmail = iCloudEmail
         guard let encoded = try? JSONEncoder().encode(payload) else { return }
         UserDefaults.standard.set(encoded, forKey: "AppSettingsV1")
     }
