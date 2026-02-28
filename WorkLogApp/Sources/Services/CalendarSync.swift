@@ -43,9 +43,25 @@ final class CalendarSync {
         // When CalDAV credentials are configured, use CalDAV exclusively.
         // Do NOT fall through to EventKit on failure — that causes duplicate events
         // (CalDAV may partially succeed while EventKit also creates one).
-        if let credentials = makeCalDAVCredentials() {
-            let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
-            return .calDAV(uid)
+        let credentialCandidates = makeCalDAVCredentialCandidates()
+        if !credentialCandidates.isEmpty {
+            var sawInvalidCredentials = false
+            for credentials in credentialCandidates {
+                do {
+                    let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
+                    return .calDAV(uid)
+                } catch {
+                    if case CalDAVError.invalidCredentials = error {
+                        sawInvalidCredentials = true
+                        continue
+                    }
+                    throw error
+                }
+            }
+
+            if sawInvalidCredentials {
+                throw CalDAVError.invalidCredentials
+            }
         }
 
         // No CalDAV credentials — use EventKit.
@@ -68,11 +84,45 @@ final class CalendarSync {
     }
 
     private func makeCalDAVCredentials() -> CalDAVCredentials? {
-        let email = settings.iCloudEmail
-        guard !email.isEmpty, let password = KeychainHelper.loadPassword(account: email) else {
-            return nil
+        makeCalDAVCredentialCandidates().first
+    }
+
+    private func makeCalDAVCredentialCandidates() -> [CalDAVCredentials] {
+        let rawEmail = settings.iCloudEmail
+        let trimmedEmail = rawEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedEmail = trimmedEmail.lowercased()
+
+        let accountKeys = [rawEmail, trimmedEmail, normalizedEmail]
+            .filter { !$0.isEmpty }
+
+        var loadedPassword: String?
+        for account in accountKeys {
+            if let value = KeychainHelper.loadPassword(account: account), !value.isEmpty {
+                loadedPassword = value
+                break
+            }
         }
-        return CalDAVCredentials(email: email, appPassword: password)
+
+        guard !trimmedEmail.isEmpty, let loadedPassword else {
+            return []
+        }
+
+        let trimmedPassword = loadedPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        let noWhitespacePassword = trimmedPassword
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+        let noHyphenPassword = noWhitespacePassword.replacingOccurrences(of: "-", with: "")
+
+        var passwordVariants: [String] = []
+        for variant in [loadedPassword, trimmedPassword, noWhitespacePassword, noHyphenPassword] {
+            guard !variant.isEmpty, !passwordVariants.contains(variant) else { continue }
+            passwordVariants.append(variant)
+        }
+
+        return passwordVariants.map { variant in
+            CalDAVCredentials(email: trimmedEmail, appPassword: variant)
+        }
     }
 
     // MARK: - CalDAV Path
@@ -261,13 +311,15 @@ final class CalendarSync {
             lines.append("ICS: \(line)")
         }
 
-        if let credentials = makeCalDAVCredentials() {
+        let credentialCandidates = makeCalDAVCredentialCandidates()
+        if let credentials = credentialCandidates.first {
             var step1 = false
             var step2 = false
             var step3 = false
 
             step1 = true
             lines.append("CalDAV step 1/3: credentials loaded (ok)")
+            lines.append("CalDAV credential variants: \(credentialCandidates.count)")
 
             do {
                 let calURL = try await calDAVClient.calendarURL(
