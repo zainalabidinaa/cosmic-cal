@@ -40,16 +40,15 @@ final class CalendarSync {
     // MARK: - Unified Sync
 
     func syncEvent(for log: WorkLog) async throws -> SyncResult {
-        // Prefer CalDAV when configured to preserve Apple's native travel-time metadata.
+        // When CalDAV credentials are configured, use CalDAV exclusively.
+        // Do NOT fall through to EventKit on failure — that causes duplicate events
+        // (CalDAV may partially succeed while EventKit also creates one).
         if let credentials = makeCalDAVCredentials() {
-            do {
-                let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
-                return .calDAV(uid)
-            } catch {
-                // Fall through to EventKit if CalDAV fails.
-            }
+            let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
+            return .calDAV(uid)
         }
 
+        // No CalDAV credentials — use EventKit.
         try await requestAccessIfNeeded()
         let eventId = try await upsertEvent(for: log)
         return .eventKit(eventId)
