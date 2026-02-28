@@ -77,4 +77,19 @@ extension View {
         self
 #endif
     }
+
+    @ViewBuilder
+    func adaptiveBottomAccessory<Accessory: View>(@ViewBuilder _ content: () -> Accessory) -> some View {
+#if EXPERIMENTAL_LIQUID_GLASS
+        if #available(iOS 26.0, *) {
+            tabViewBottomAccessory {
+                content()
+            }
+        } else {
+            self
+        }
+#else
+        self
+#endif
+    }
 }

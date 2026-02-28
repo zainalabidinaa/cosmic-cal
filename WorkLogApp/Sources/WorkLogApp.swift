@@ -29,6 +29,17 @@ struct WorkLogApp: App {
             }
             .tint(.orange)
             .preferredColorScheme(.dark)
+            .adaptiveBottomAccessory {
+                HStack(spacing: 8) {
+                    Image(systemName: selectedTab == .log ? "sparkles" : "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                        .imageScale(.small)
+                    Text(selectedTab == .log ? "LMB quick capture" : "LMB archive")
+                        .font(.caption.weight(.semibold))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.white.opacity(0.1), in: Capsule(style: .continuous))
+            }
             .adaptiveTabBarBehavior()
             .background {
                 LiquidBackdrop()

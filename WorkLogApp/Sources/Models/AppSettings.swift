@@ -16,6 +16,22 @@ enum TravelOriginMode: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum TravelTimeMode: String, Codable, CaseIterable, Identifiable {
+    case dynamicDriving
+    case fixedEstimate
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .dynamicDriving:
+            return "Based on driving"
+        case .fixedEstimate:
+            return "Fixed estimate"
+        }
+    }
+}
+
 struct ShiftTemplate: Identifiable, Codable, Equatable {
     var id = UUID()
     var startHour: Int
@@ -38,6 +54,7 @@ struct ShiftTemplate: Identifiable, Codable, Equatable {
 final class AppSettings: ObservableObject {
     @Published var destinationAddress: String { didSet { persistIfReady() } }
     @Published var travelOriginMode: TravelOriginMode { didSet { persistIfReady() } }
+    @Published var travelTimeMode: TravelTimeMode { didSet { persistIfReady() } }
     @Published var originFallbackAddress: String { didSet { persistIfReady() } }
     @Published var calendarName: String { didSet { persistIfReady() } }
     @Published var eventTitle: String { didSet { persistIfReady() } }
@@ -55,6 +72,7 @@ final class AppSettings: ObservableObject {
         let normalizedEventTitle = stored.eventTitle == "LMB Lund" ? "LMB" : stored.eventTitle
         _destinationAddress = Published(initialValue: stored.destinationAddress)
         _travelOriginMode = Published(initialValue: stored.travelOriginMode)
+        _travelTimeMode = Published(initialValue: stored.travelTimeMode)
         _originFallbackAddress = Published(initialValue: stored.originFallbackAddress)
         _calendarName = Published(initialValue: stored.calendarName)
         _eventTitle = Published(initialValue: normalizedEventTitle)
@@ -70,6 +88,7 @@ final class AppSettings: ObservableObject {
         let defaults = SettingsData()
         destinationAddress = defaults.destinationAddress
         travelOriginMode = defaults.travelOriginMode
+        travelTimeMode = defaults.travelTimeMode
         originFallbackAddress = defaults.originFallbackAddress
         calendarName = defaults.calendarName
         eventTitle = defaults.eventTitle
@@ -82,6 +101,7 @@ final class AppSettings: ObservableObject {
         let payload = SettingsData(
             destinationAddress: destinationAddress,
             travelOriginMode: travelOriginMode,
+            travelTimeMode: travelTimeMode,
             originFallbackAddress: originFallbackAddress,
             calendarName: calendarName,
             eventTitle: eventTitle,
@@ -104,9 +124,24 @@ final class AppSettings: ObservableObject {
 private struct SettingsData: Codable {
     var destinationAddress = "Akutgatan 8, Lund"
     var travelOriginMode: TravelOriginMode = .currentLocation
+    var travelTimeMode: TravelTimeMode = .dynamicDriving
     var originFallbackAddress = "Traktörsgatan 11, Helsingborg"
     var calendarName = "Arbete"
     var eventTitle = "LMB"
     var shiftTemplates = ShiftTemplate.defaults
     var iCloudEmail = ""
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        destinationAddress = try container.decodeIfPresent(String.self, forKey: .destinationAddress) ?? "Akutgatan 8, Lund"
+        travelOriginMode = try container.decodeIfPresent(TravelOriginMode.self, forKey: .travelOriginMode) ?? .currentLocation
+        travelTimeMode = try container.decodeIfPresent(TravelTimeMode.self, forKey: .travelTimeMode) ?? .dynamicDriving
+        originFallbackAddress = try container.decodeIfPresent(String.self, forKey: .originFallbackAddress) ?? "Traktörsgatan 11, Helsingborg"
+        calendarName = try container.decodeIfPresent(String.self, forKey: .calendarName) ?? "Arbete"
+        eventTitle = try container.decodeIfPresent(String.self, forKey: .eventTitle) ?? "LMB"
+        shiftTemplates = try container.decodeIfPresent([ShiftTemplate].self, forKey: .shiftTemplates) ?? ShiftTemplate.defaults
+        iCloudEmail = try container.decodeIfPresent(String.self, forKey: .iCloudEmail) ?? ""
+    }
 }

@@ -84,7 +84,7 @@ final class WorkLogStore: ObservableObject {
             case .eventKit:
                 method = settings.calendarName
             case .calDAV:
-                method = "CalDAV"
+                method = settings.travelTimeMode == .dynamicDriving ? "CalDAV · dynamic driving" : "CalDAV · fixed estimate"
             }
             lastSaveMessage = "Saved and synced via \(method)."
         } catch {

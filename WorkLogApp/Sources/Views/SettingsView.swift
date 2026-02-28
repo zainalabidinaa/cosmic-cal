@@ -65,6 +65,18 @@ struct SettingsView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+
+                            SettingsStatusRow(
+                                title: "Sync Path",
+                                value: syncPathLabel,
+                                isHealthy: settings.calDAVConfigured
+                            )
+
+                            SettingsStatusRow(
+                                title: "Calendar Compatibility",
+                                value: calendarCompatibilityLabel,
+                                isHealthy: calendarSupportsTravelMetadata
+                            )
                         }
 
                         SettingsGlassSection(title: "Calendar Event", icon: "calendar.badge.clock") {
@@ -105,6 +117,16 @@ struct SettingsView: View {
                                 .pickerStyle(.segmented)
                             }
 
+                            SettingsValueRow(title: "Travel Time") {
+                                Picker("Travel Time", selection: $settings.travelTimeMode) {
+                                    ForEach(TravelTimeMode.allCases) { mode in
+                                        Text(mode.title).tag(mode)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(.white)
+                            }
+
                             SettingsTextFieldRow(title: "Destination") {
                                 TextField("Destination address", text: $settings.destinationAddress)
                             }
@@ -117,6 +139,12 @@ struct SettingsView: View {
                                 Text("Current mode uses your device location for travel-time routing.")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.78))
+                            }
+
+                            if settings.travelTimeMode == .dynamicDriving {
+                                Text("Dynamic driving uses Apple travel metadata and works best with an iCloud calendar + CalDAV sync.")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.72))
                             }
                         }
 
@@ -185,10 +213,31 @@ struct SettingsView: View {
             settings.calendarName = first
         }
     }
+
+    private var syncPathLabel: String {
+        settings.calDAVConfigured ? "CalDAV active" : "EventKit fallback"
+    }
+
+    private var calendarCompatibilityLabel: String {
+        if calendarSupportsTravelMetadata {
+            return "iCloud/CalDAV calendar selected"
+        }
+        return "Travel metadata may be limited"
+    }
+
+    private var calendarSupportsTravelMetadata: Bool {
+        calendarCatalog.calendarSupportsTravelMetadata(named: settings.calendarName)
+    }
 }
 
 @MainActor
 private final class CalendarCatalog: ObservableObject {
+    struct CalendarOption {
+        let title: String
+        let type: EKCalendarType
+    }
+
+    @Published var calendarOptions: [CalendarOption] = []
     @Published var calendarNames: [String] = []
     @Published var statusText = "No calendars available"
 
@@ -213,11 +262,46 @@ private final class CalendarCatalog: ObservableObject {
 
         let writable = eventStore.calendars(for: .event)
             .filter { $0.allowsContentModifications }
-            .map(\.title)
-        let uniqueSorted = Array(Set(writable)).sorted()
+        let options = writable.map { CalendarOption(title: $0.title, type: $0.type) }
+        let uniqueSorted = Array(Set(options.map(\.title))).sorted()
 
+        calendarOptions = options
         calendarNames = uniqueSorted
         statusText = uniqueSorted.isEmpty ? "No writable calendars found" : ""
+    }
+
+    func calendarSupportsTravelMetadata(named calendarName: String) -> Bool {
+        guard let option = calendarOptions.first(where: { $0.title == calendarName }) else {
+            return false
+        }
+        return option.type == .calDAV
+    }
+}
+
+private struct SettingsStatusRow: View {
+    let title: String
+    let value: String
+    let isHealthy: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.8))
+
+            Spacer()
+
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background((isHealthy ? Color.green : Color.orange).opacity(0.22), in: Capsule(style: .continuous))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(.white.opacity(0.18), lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
+        }
     }
 }
 

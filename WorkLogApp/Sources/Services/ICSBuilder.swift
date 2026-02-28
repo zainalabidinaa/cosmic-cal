@@ -4,9 +4,9 @@ import Foundation
 enum ICSBuilder {
     /// Builds a VCALENDAR string with Apple-proprietary travel time properties.
     ///
-    /// The generated iCalendar includes `X-APPLE-TRAVEL-START`, `X-APPLE-TRAVEL-DURATION`,
-    /// `X-APPLE-STRUCTURED-LOCATION`, and travel-aware `VALARM` triggers so that Apple Calendar
-    /// displays "Based on location" driving travel time natively.
+    /// The generated iCalendar includes `X-APPLE-TRAVEL-START` and `X-APPLE-STRUCTURED-LOCATION`.
+    /// It optionally includes `X-APPLE-TRAVEL-DURATION` + travel-aware `VALARM` triggers when
+    /// a fixed estimate is preferred over dynamic "Based on location" travel behavior.
     static func buildEvent(
         uid: String,
         title: String,

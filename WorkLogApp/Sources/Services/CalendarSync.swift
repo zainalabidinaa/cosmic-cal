@@ -94,7 +94,7 @@ final class CalendarSync {
             from: origin, to: destinationLoc, arrivalDate: log.start
         ) ?? fallbackTravelTime
         let travelMinutes = max(1, Int((travelRaw / 60).rounded()))
-        let fixedDurationForICS: Int? = useCurrentLocationStart ? nil : travelMinutes
+        let fixedDurationForICS: Int? = settings.travelTimeMode == .fixedEstimate ? travelMinutes : nil
 
         let ics = ICSBuilder.buildEvent(
             uid: uid,
@@ -211,6 +211,7 @@ final class CalendarSync {
                 for value in drivingValues {
                     _ = event.perform(setter, with: value)
                 }
+                return
             }
         }
     }
