@@ -17,7 +17,7 @@ enum ICSBuilder {
         travelStartTitle: String?,
         travelStartAddress: String,
         travelStartCoordinate: CLLocationCoordinate2D?,
-        travelDurationMinutes: Int,
+        travelDurationMinutes: Int?,
         travelStartIsCurrentLocation: Bool
     ) -> String {
         let dtstart = icsDateString(from: start)
@@ -59,14 +59,16 @@ enum ICSBuilder {
         }
         lines.append(travelLine)
 
-        lines.append("X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT\(travelDurationMinutes)M")
+        if let travelDurationMinutes {
+            lines.append("X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT\(travelDurationMinutes)M")
 
-        // Alarm: at travel time start (time to leave)
-        appendAlarm(to: &lines, beforeTravelMinutes: 0, travelMinutes: travelDurationMinutes)
-        // Alarm: 30 min before travel
-        appendAlarm(to: &lines, beforeTravelMinutes: 30, travelMinutes: travelDurationMinutes)
-        // Alarm: 1 hour before travel
-        appendAlarm(to: &lines, beforeTravelMinutes: 60, travelMinutes: travelDurationMinutes)
+            // Alarm: at travel time start (time to leave)
+            appendAlarm(to: &lines, beforeTravelMinutes: 0, travelMinutes: travelDurationMinutes)
+            // Alarm: 30 min before travel
+            appendAlarm(to: &lines, beforeTravelMinutes: 30, travelMinutes: travelDurationMinutes)
+            // Alarm: 1 hour before travel
+            appendAlarm(to: &lines, beforeTravelMinutes: 60, travelMinutes: travelDurationMinutes)
+        }
 
         lines.append("END:VEVENT")
         lines.append("END:VCALENDAR")

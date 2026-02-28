@@ -94,6 +94,7 @@ final class CalendarSync {
             from: origin, to: destinationLoc, arrivalDate: log.start
         ) ?? fallbackTravelTime
         let travelMinutes = max(1, Int((travelRaw / 60).rounded()))
+        let fixedDurationForICS: Int? = useCurrentLocationStart ? nil : travelMinutes
 
         let ics = ICSBuilder.buildEvent(
             uid: uid,
@@ -105,7 +106,7 @@ final class CalendarSync {
             travelStartTitle: origin?.title,
             travelStartAddress: travelStartAddress,
             travelStartCoordinate: originCoord,
-            travelDurationMinutes: travelMinutes,
+            travelDurationMinutes: fixedDurationForICS,
             travelStartIsCurrentLocation: useCurrentLocationStart
         )
 
@@ -181,12 +182,10 @@ final class CalendarSync {
         }
         setTravelRoutingModeIfSupported(event: event)
 
-        // Compute travel time for alarm offsets, but do NOT persist a fixed travel time.
-        // This keeps Calendar's travel time UI on "Based on location" (car) rather than
-        // selecting a hardcoded minute value.
+        // Compute travel time for alarm offsets. Keep travel-time mode dynamic by not
+        // writing a fixed event travel duration.
         let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin, to: structuredDestination.geoLocation, arrivalDate: log.start) ?? fallbackTravelTime
         let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
-        setTravelTimeIfSupported(event: event, seconds: travelTimeSeconds)
 
         applyDefaultAlarms(to: event, travelTime: travelTimeSeconds)
 
@@ -200,27 +199,19 @@ final class CalendarSync {
     private func setTravelRoutingModeIfSupported(event: EKEvent) {
         // Best-effort: prefer driving when Calendar computes "Based on location".
         let keys = ["setTravelRoutingMode:", "setTravelMode:", "setTravelTransportType:"]
-        let drivingValue = NSNumber(value: 0)
+        let drivingValues: [AnyObject] = [
+            NSNumber(value: 0),
+            NSString(string: "CAR"),
+            NSString(string: "DRIVING")
+        ]
 
         for key in keys {
             let setter = Selector(key)
             if event.responds(to: setter) {
-                _ = event.perform(setter, with: drivingValue)
-                return
+                for value in drivingValues {
+                    _ = event.perform(setter, with: value)
+                }
             }
-        }
-    }
-
-    private func setTravelTimeIfSupported(event: EKEvent, seconds: TimeInterval) {
-        let value = NSNumber(value: Int(seconds))
-        let setterSelectors: [Selector] = [
-            Selector(("setTravelTime:")),
-            Selector(("setExpectedTravelTime:"))
-        ]
-
-        for setter in setterSelectors where event.responds(to: setter) {
-            _ = event.perform(setter, with: value)
-            return
         }
     }
 
