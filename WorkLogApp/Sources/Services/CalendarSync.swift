@@ -245,13 +245,28 @@ final class CalendarSync {
             travelStartIsCurrentLocation: useCurrentLocationStart
         )
 
-        lines.append("--- ICS DUMP (CRLF lines) ---")
-        for (index, line) in ics.components(separatedBy: "\r\n").enumerated() {
-            lines.append("\(index + 1): \(line)")
+        let importantICSLines = ics
+            .components(separatedBy: "\r\n")
+            .filter {
+                $0.hasPrefix("DTSTART")
+                    || $0.hasPrefix("DTEND")
+                    || $0.hasPrefix("X-APPLE-STRUCTURED-LOCATION")
+                    || $0.hasPrefix("X-APPLE-TRAVEL-DURATION")
+                    || $0.hasPrefix("X-APPLE-TRAVEL-START")
+                    || $0.hasPrefix("TRIGGER;VALUE=DATE-TIME")
+            }
+
+        lines.append("ICS check: found \(importantICSLines.count) key travel lines")
+        for line in importantICSLines {
+            lines.append("ICS: \(line)")
         }
-        lines.append("--- END ICS ---")
 
         if let credentials = makeCalDAVCredentials() {
+            var step1 = false
+            var step2 = false
+            var step3 = false
+
+            step1 = true
             lines.append("CalDAV step 1/3: credentials loaded (ok)")
 
             do {
@@ -259,6 +274,7 @@ final class CalendarSync {
                     for: settings.calendarName,
                     credentials: credentials
                 )
+                step2 = true
                 lines.append("CalDAV step 2/3: calendar discovery (ok)")
 
                 try await calDAVClient.putEvent(
@@ -267,12 +283,15 @@ final class CalendarSync {
                     icsData: ics,
                     credentials: credentials
                 )
+                step3 = true
                 lines.append("CalDAV step 3/3: PUT event (ok)")
                 lines.append("Test event sync: CalDAV uid=\(uid)")
                 lines.append("Result: success. Open Calendar and inspect the new event.")
             } catch {
                 lines.append("Result: failed during CalDAV step (\(error.localizedDescription))")
             }
+
+            lines.append("CalDAV summary: step1=\(step1 ? "ok" : "no") step2=\(step2 ? "ok" : "no") step3=\(step3 ? "ok" : "no")")
 
             return lines.joined(separator: "\n")
         }

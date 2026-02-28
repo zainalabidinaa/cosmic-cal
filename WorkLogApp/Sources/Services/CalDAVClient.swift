@@ -271,6 +271,37 @@ actor CalDAVClient {
 private final class AuthChallengeDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     var credential: URLCredential?
 
+    private func isICloudHost(_ host: String?) -> Bool {
+        guard let host else { return false }
+        return host.hasSuffix("icloud.com") || host.hasSuffix("apple.com")
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        guard let credential else {
+            completionHandler(request)
+            return
+        }
+
+        guard isICloudHost(request.url?.host) else {
+            completionHandler(request)
+            return
+        }
+
+        var redirected = request
+        if redirected.value(forHTTPHeaderField: "Authorization") == nil {
+            let combined = "\(credential.user ?? ""):\(credential.password ?? "")"
+            let auth = "Basic \(Data(combined.utf8).base64EncodedString())"
+            redirected.setValue(auth, forHTTPHeaderField: "Authorization")
+        }
+        completionHandler(redirected)
+    }
+
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
@@ -278,7 +309,17 @@ private final class AuthChallengeDelegate: NSObject, URLSessionTaskDelegate, @un
         completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
         let method = challenge.protectionSpace.authenticationMethod
-        if (method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest),
+        if challenge.previousFailureCount > 1 {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
+        let supportsHTTPAuth = method == NSURLAuthenticationMethodHTTPBasic
+            || method == NSURLAuthenticationMethodHTTPDigest
+            || method == NSURLAuthenticationMethodDefault
+
+        if supportsHTTPAuth,
+           isICloudHost(challenge.protectionSpace.host),
            let credential {
             completionHandler(.useCredential, credential)
         } else {
