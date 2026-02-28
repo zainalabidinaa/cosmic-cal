@@ -19,10 +19,6 @@ enum CalDAVError: LocalizedError {
     case calendarNotFound(String)
     case serverError(Int)
     case discoveryFailed
-    case networkOffline
-    case requestTimedOut
-    case secureConnectionFailed
-    case transportError(String)
 
     var errorDescription: String? {
         switch self {
@@ -30,10 +26,6 @@ enum CalDAVError: LocalizedError {
         case .calendarNotFound(let name): return "Calendar '\(name)' not found via CalDAV."
         case .serverError(let code): return "CalDAV server error (HTTP \(code))."
         case .discoveryFailed: return "CalDAV calendar discovery failed."
-        case .networkOffline: return "No network connection. Check internet access and try again."
-        case .requestTimedOut: return "CalDAV request timed out. Try again in a moment."
-        case .secureConnectionFailed: return "Secure connection to iCloud failed. Check date/time and network security settings."
-        case .transportError(let detail): return "CalDAV transport error: \(detail)"
         }
     }
 }
@@ -75,12 +67,7 @@ actor CalDAVClient {
         request.httpBody = Data(icsData.utf8)
 
         authDelegate.credential = credentials.urlCredential
-        let response: URLResponse
-        do {
-            (_, response) = try await session.data(for: request)
-        } catch {
-            throw mappedTransportError(error)
-        }
+        let (_, response) = try await session.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200...299).contains(code) else {
             if code == 401 { throw CalDAVError.invalidCredentials }
@@ -95,12 +82,7 @@ actor CalDAVClient {
         request.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
 
         authDelegate.credential = credentials.urlCredential
-        let response: URLResponse
-        do {
-            (_, response) = try await session.data(for: request)
-        } catch {
-            throw mappedTransportError(error)
-        }
+        let (_, response) = try await session.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard code == 200 || code == 204 || code == 404 else {
             if code == 401 { throw CalDAVError.invalidCredentials }
@@ -159,41 +141,17 @@ actor CalDAVClient {
         let stripped = stripNamespacePrefixes(xml)
 
         let blocks = stripped.components(separatedBy: "<response>").dropFirst()
-        var discoveredCalendars: [(displayName: String, href: String)] = []
-
         for block in blocks {
             let isCalendar = block.contains("<calendar")
-            guard isCalendar,
-                  let displayName = textBetween("<displayname>", and: "</displayname>", in: block),
-                  let href = textBetween("<href>", and: "</href>", in: block) else { continue }
+            guard let displayName = textBetween("<displayname>", and: "</displayname>", in: block),
+                  displayName == name,
+                  isCalendar else { continue }
 
-            discoveredCalendars.append((displayName, href))
-        }
-
-        // First: exact match.
-        if let exact = discoveredCalendars.first(where: { $0.displayName == name }) {
-            return resolveURL(exact.href)
-        }
-
-        // Second: normalized case/whitespace/diacritic-insensitive match.
-        let normalizedName = normalizeCalendarName(name)
-        if let fuzzy = discoveredCalendars.first(where: { normalizeCalendarName($0.displayName) == normalizedName }) {
-            return resolveURL(fuzzy.href)
-        }
-
-        // Last resort: pick first discovered calendar to avoid hard failure when iCloud
-        // returns an unexpected display name variant.
-        if let first = discoveredCalendars.first {
-            return resolveURL(first.href)
+            guard let href = textBetween("<href>", and: "</href>", in: block) else { continue }
+            return resolveURL(href)
         }
 
         throw CalDAVError.calendarNotFound(name)
-    }
-
-    private func normalizeCalendarName(_ name: String) -> String {
-        name
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
     }
 
     // MARK: - HTTP
@@ -207,51 +165,13 @@ actor CalDAVClient {
         request.httpBody = Data(body.utf8)
 
         authDelegate.credential = credentials.urlCredential
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            throw mappedTransportError(error)
-        }
+        let (data, response) = try await session.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard code == 207 || code == 200 else {
             if code == 401 { throw CalDAVError.invalidCredentials }
             throw CalDAVError.serverError(code)
         }
         return String(data: data, encoding: .utf8) ?? ""
-    }
-
-    private func mappedTransportError(_ error: Error) -> Error {
-        let urlCode: URLError.Code?
-        if let urlError = error as? URLError {
-            urlCode = urlError.code
-        } else {
-            let nsError = error as NSError
-            if nsError.domain == NSURLErrorDomain {
-                urlCode = URLError.Code(rawValue: nsError.code)
-            } else {
-                urlCode = nil
-            }
-        }
-
-        guard let urlCode else {
-            return error
-        }
-
-        switch urlCode {
-        case .userAuthenticationRequired, .userCancelledAuthentication:
-            return CalDAVError.invalidCredentials
-        case .notConnectedToInternet, .networkConnectionLost:
-            return CalDAVError.networkOffline
-        case .timedOut:
-            return CalDAVError.requestTimedOut
-        case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateHasUnknownRoot:
-            return CalDAVError.secureConnectionFailed
-        default:
-            let nsError = error as NSError
-            return CalDAVError.transportError("\(nsError.domain) code=\(nsError.code): \(nsError.localizedDescription)")
-        }
     }
 
     // MARK: - XML Helpers
@@ -295,37 +215,6 @@ actor CalDAVClient {
 private final class AuthChallengeDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     var credential: URLCredential?
 
-    private func isICloudHost(_ host: String?) -> Bool {
-        guard let host else { return false }
-        return host.hasSuffix("icloud.com") || host.hasSuffix("apple.com")
-    }
-
-    func urlSession(
-        _ session: URLSession,
-        task: URLSessionTask,
-        willPerformHTTPRedirection response: HTTPURLResponse,
-        newRequest request: URLRequest,
-        completionHandler: @escaping (URLRequest?) -> Void
-    ) {
-        guard let credential else {
-            completionHandler(request)
-            return
-        }
-
-        guard isICloudHost(request.url?.host) else {
-            completionHandler(request)
-            return
-        }
-
-        var redirected = request
-        if redirected.value(forHTTPHeaderField: "Authorization") == nil {
-            let combined = "\(credential.user ?? ""):\(credential.password ?? "")"
-            let auth = "Basic \(Data(combined.utf8).base64EncodedString())"
-            redirected.setValue(auth, forHTTPHeaderField: "Authorization")
-        }
-        completionHandler(redirected)
-    }
-
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
@@ -333,20 +222,8 @@ private final class AuthChallengeDelegate: NSObject, URLSessionTaskDelegate, @un
         completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
         let method = challenge.protectionSpace.authenticationMethod
-        if challenge.previousFailureCount > 1 {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
-        }
-
-        if method == NSURLAuthenticationMethodServerTrust {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-
-        // iCloud may challenge with different auth method labels depending on redirect
-        // target and OS version. For iCloud/apple hosts, provide the configured credential
-        // for any non-server-trust HTTP auth challenge.
-        if isICloudHost(challenge.protectionSpace.host), let credential {
+        if (method == NSURLAuthenticationMethodHTTPBasic || method == NSURLAuthenticationMethodHTTPDigest),
+           let credential {
             completionHandler(.useCredential, credential)
         } else {
             completionHandler(.performDefaultHandling, nil)
