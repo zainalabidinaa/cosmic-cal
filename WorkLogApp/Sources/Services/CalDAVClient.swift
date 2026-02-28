@@ -19,6 +19,10 @@ enum CalDAVError: LocalizedError {
     case calendarNotFound(String)
     case serverError(Int)
     case discoveryFailed
+    case networkOffline
+    case requestTimedOut
+    case secureConnectionFailed
+    case transportError(String)
 
     var errorDescription: String? {
         switch self {
@@ -26,6 +30,10 @@ enum CalDAVError: LocalizedError {
         case .calendarNotFound(let name): return "Calendar '\(name)' not found via CalDAV."
         case .serverError(let code): return "CalDAV server error (HTTP \(code))."
         case .discoveryFailed: return "CalDAV calendar discovery failed."
+        case .networkOffline: return "No network connection. Check internet access and try again."
+        case .requestTimedOut: return "CalDAV request timed out. Try again in a moment."
+        case .secureConnectionFailed: return "Secure connection to iCloud failed. Check date/time and network security settings."
+        case .transportError(let detail): return "CalDAV transport error: \(detail)"
         }
     }
 }
@@ -67,7 +75,12 @@ actor CalDAVClient {
         request.httpBody = Data(icsData.utf8)
 
         authDelegate.credential = credentials.urlCredential
-        let (_, response) = try await session.data(for: request)
+        let response: URLResponse
+        do {
+            (_, response) = try await session.data(for: request)
+        } catch {
+            throw mappedTransportError(error)
+        }
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200...299).contains(code) else {
             if code == 401 { throw CalDAVError.invalidCredentials }
@@ -82,7 +95,12 @@ actor CalDAVClient {
         request.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
 
         authDelegate.credential = credentials.urlCredential
-        let (_, response) = try await session.data(for: request)
+        let response: URLResponse
+        do {
+            (_, response) = try await session.data(for: request)
+        } catch {
+            throw mappedTransportError(error)
+        }
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard code == 200 || code == 204 || code == 404 else {
             if code == 401 { throw CalDAVError.invalidCredentials }
@@ -165,13 +183,38 @@ actor CalDAVClient {
         request.httpBody = Data(body.utf8)
 
         authDelegate.credential = credentials.urlCredential
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw mappedTransportError(error)
+        }
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard code == 207 || code == 200 else {
             if code == 401 { throw CalDAVError.invalidCredentials }
             throw CalDAVError.serverError(code)
         }
         return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    private func mappedTransportError(_ error: Error) -> Error {
+        guard let urlError = error as? URLError else {
+            return error
+        }
+
+        switch urlError.code {
+        case .userAuthenticationRequired, .userCancelledAuthentication:
+            return CalDAVError.invalidCredentials
+        case .notConnectedToInternet, .networkConnectionLost:
+            return CalDAVError.networkOffline
+        case .timedOut:
+            return CalDAVError.requestTimedOut
+        case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateHasUnknownRoot:
+            return CalDAVError.secureConnectionFailed
+        default:
+            return CalDAVError.transportError(urlError.localizedDescription)
+        }
     }
 
     // MARK: - XML Helpers

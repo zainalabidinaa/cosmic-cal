@@ -221,43 +221,68 @@ final class CalendarSync {
         let testStart = Calendar.current.date(byAdding: .minute, value: 90, to: now) ?? now
         let testEnd = Calendar.current.date(byAdding: .minute, value: 120, to: now) ?? now.addingTimeInterval(1800)
         let testLog = WorkLog(day: testStart.startOfLocalDay(), start: testStart, end: testEnd)
+        let uid = UUID().uuidString + "@worklog-test"
+        let destinationCoord = try? await geocode(address: settings.destinationAddress)
+        let origin = await resolveOriginLocation()
+        let originCoord = origin?.location.coordinate
+        let destinationLoc = destinationCoord.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
+        let useCurrentLocationStart = settings.travelOriginMode == .currentLocation
+        let travelStartAddress: String? = useCurrentLocationStart ? nil : settings.originFallbackAddress
+        let travelRaw = await estimateTravelTimeSeconds(from: origin, to: destinationLoc, arrivalDate: testStart) ?? fallbackTravelTime
+        let travelMinutes = max(1, Int((travelRaw / 60).rounded()))
+        let ics = ICSBuilder.buildEvent(
+            uid: uid,
+            title: settings.eventTitle,
+            start: testStart,
+            end: testEnd,
+            location: settings.destinationAddress,
+            locationCoordinate: destinationCoord,
+            travelStartTitle: origin?.title,
+            travelStartAddress: travelStartAddress,
+            travelStartCoordinate: originCoord,
+            travelDurationMinutes: travelMinutes,
+            travelAlarmMinutes: travelMinutes,
+            travelStartIsCurrentLocation: useCurrentLocationStart
+        )
 
-        // Also dump the raw ICS so we can verify the format field-by-field
+        lines.append("--- ICS DUMP (CRLF lines) ---")
+        for (index, line) in ics.components(separatedBy: "\r\n").enumerated() {
+            lines.append("\(index + 1): \(line)")
+        }
+        lines.append("--- END ICS ---")
+
         if let credentials = makeCalDAVCredentials() {
-            let uid = UUID().uuidString + "@worklog-test"
-            let destinationCoord = try? await geocode(address: settings.destinationAddress)
-            let origin = await resolveOriginLocation()
-            let originCoord = origin?.location.coordinate
-            let destinationLoc = destinationCoord.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
-            let useCurrentLocationStart = settings.travelOriginMode == .currentLocation
-            let travelStartAddress: String? = useCurrentLocationStart ? nil : settings.originFallbackAddress
-            let travelRaw = await estimateTravelTimeSeconds(from: origin, to: destinationLoc, arrivalDate: testStart) ?? fallbackTravelTime
-            let travelMinutes = max(1, Int((travelRaw / 60).rounded()))
-            let ics = ICSBuilder.buildEvent(
-                uid: uid,
-                title: settings.eventTitle,
-                start: testStart,
-                end: testEnd,
-                location: settings.destinationAddress,
-                locationCoordinate: destinationCoord,
-                travelStartTitle: origin?.title,
-                travelStartAddress: travelStartAddress,
-                travelStartCoordinate: originCoord,
-                travelDurationMinutes: travelMinutes,
-                travelAlarmMinutes: travelMinutes,
-                travelStartIsCurrentLocation: useCurrentLocationStart
-            )
-            lines.append("--- ICS DUMP ---")
-            lines.append(ics.replacingOccurrences(of: "\r\n", with: "\n"))
-            lines.append("--- END ICS ---")
-            _ = credentials  // suppress unused warning; ICS dump is the goal
+            lines.append("CalDAV step 1/3: credentials loaded (ok)")
+
+            do {
+                let calURL = try await calDAVClient.calendarURL(
+                    for: settings.calendarName,
+                    credentials: credentials
+                )
+                lines.append("CalDAV step 2/3: calendar discovery (ok)")
+
+                try await calDAVClient.putEvent(
+                    calendarURL: calURL,
+                    uid: uid,
+                    icsData: ics,
+                    credentials: credentials
+                )
+                lines.append("CalDAV step 3/3: PUT event (ok)")
+                lines.append("Test event sync: CalDAV uid=\(uid)")
+                lines.append("Result: success. Open Calendar and inspect the new event.")
+            } catch {
+                lines.append("Result: failed during CalDAV step (\(error.localizedDescription))")
+            }
+
+            return lines.joined(separator: "\n")
         }
 
+        lines.append("CalDAV credentials missing; running EventKit fallback test.")
         do {
             let result = try await syncEvent(for: testLog)
             switch result {
-            case .calDAV(let uid):
-                lines.append("Test event sync: CalDAV uid=\(uid)")
+            case .calDAV(let syncedUID):
+                lines.append("Test event sync: CalDAV uid=\(syncedUID)")
             case .eventKit(let eventId):
                 lines.append("Test event sync: EventKit id=\(eventId)")
             }
