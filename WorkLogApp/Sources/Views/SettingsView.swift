@@ -6,6 +6,8 @@ struct SettingsView: View {
     @State private var showingAddTemplate = false
     @State private var appPassword = ""
     @State private var passwordLoaded = false
+    @State private var isRunningTravelTest = false
+    @State private var travelTestReport: String?
     @StateObject private var calendarCatalog = CalendarCatalog()
     @Namespace private var settingsNamespace
 
@@ -145,6 +147,41 @@ struct SettingsView: View {
                                 Text("Dynamic driving uses Apple travel metadata and works best with an iCloud calendar + CalDAV sync.")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.72))
+                            }
+
+                            Button {
+                                guard !isRunningTravelTest else { return }
+                                Task {
+                                    isRunningTravelTest = true
+                                    let sync = CalendarSync(settings: settings)
+                                    travelTestReport = await sync.runTravelMetadataTest()
+                                    isRunningTravelTest = false
+                                }
+                            } label: {
+                                HStack {
+                                    if isRunningTravelTest {
+                                        ProgressView()
+                                    } else {
+                                        Image(systemName: "checkmark.shield")
+                                    }
+                                    Text(isRunningTravelTest ? "Running travel test…" : "Run Travel Metadata Test")
+                                        .fontWeight(.semibold)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .adaptivePrimaryButtonStyle()
+                            .tint(.orange)
+
+                            if let travelTestReport {
+                                ScrollView {
+                                    Text(travelTestReport)
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(.white.opacity(0.9))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .frame(maxHeight: 140)
+                                .padding(10)
+                                .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
                         }
 

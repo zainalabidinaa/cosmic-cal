@@ -107,6 +107,7 @@ final class CalendarSync {
             travelStartAddress: travelStartAddress,
             travelStartCoordinate: originCoord,
             travelDurationMinutes: fixedDurationForICS,
+            travelAlarmMinutes: travelMinutes,
             travelStartIsCurrentLocation: useCurrentLocationStart
         )
 
@@ -194,6 +195,46 @@ final class CalendarSync {
             try? eventStore.remove(oldEvent, span: .thisEvent, commit: true)
         }
         return event.eventIdentifier
+    }
+
+    func runTravelMetadataTest() async -> String {
+        var lines: [String] = []
+        lines.append("Sync configured: \(settings.calDAVConfigured ? "CalDAV" : "EventKit fallback")")
+        lines.append("Travel origin: \(settings.travelOriginMode.title)")
+        lines.append("Travel mode: \(settings.travelTimeMode.title)")
+        lines.append("Calendar: \(settings.calendarName)")
+
+        if let calendar = findPreferredCalendar(named: settings.calendarName) {
+            lines.append("Calendar type: \(calendarTypeLabel(calendar.type))")
+        } else {
+            lines.append("Calendar type: not found")
+        }
+
+        let destinationResolved = (try? await geocode(address: settings.destinationAddress)) != nil
+        lines.append("Destination geocode: \(destinationResolved ? "ok" : "failed")")
+
+        let originResolved = await resolveOriginLocation() != nil
+        lines.append("Origin resolution: \(originResolved ? "ok" : "failed")")
+
+        let now = Date()
+        let testStart = Calendar.current.date(byAdding: .minute, value: 90, to: now) ?? now
+        let testEnd = Calendar.current.date(byAdding: .minute, value: 120, to: now) ?? now.addingTimeInterval(1800)
+        let testLog = WorkLog(day: testStart.startOfLocalDay(), start: testStart, end: testEnd)
+
+        do {
+            let result = try await syncEvent(for: testLog)
+            switch result {
+            case .calDAV(let uid):
+                lines.append("Test event sync: CalDAV uid=\(uid)")
+            case .eventKit(let eventId):
+                lines.append("Test event sync: EventKit id=\(eventId)")
+            }
+            lines.append("Result: success. Open Calendar and inspect the new event.")
+        } catch {
+            lines.append("Result: failed (\(error.localizedDescription))")
+        }
+
+        return lines.joined(separator: "\n")
     }
 
     private func setTravelRoutingModeIfSupported(event: EKEvent) {
@@ -328,6 +369,23 @@ final class CalendarSync {
         }
 
         return candidates.first
+    }
+
+    private func calendarTypeLabel(_ type: EKCalendarType) -> String {
+        switch type {
+        case .local:
+            return "Local"
+        case .calDAV:
+            return "CalDAV"
+        case .exchange:
+            return "Exchange"
+        case .subscription:
+            return "Subscription"
+        case .birthday:
+            return "Birthday"
+        @unknown default:
+            return "Unknown"
+        }
     }
 }
 
