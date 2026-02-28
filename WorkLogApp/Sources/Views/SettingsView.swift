@@ -19,19 +19,19 @@ struct SettingsView: View {
                         GlassCard(style: .elevated) {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
-                                    Text("LMB")
+                                    Text("labmedicin")
                                         .font(.title2.weight(.bold))
                                     Spacer()
                                     Text(settings.calendarName)
                                         .font(.caption.weight(.semibold))
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 5)
-                                        .background(.white.opacity(0.12), in: Capsule(style: .continuous))
+                                        .background(GraphiteCopperTheme.copper.opacity(0.16), in: Capsule(style: .continuous))
                                 }
-                                    .foregroundStyle(.white)
-                                Text("Calendar-first shift logging with a cleaner liquid interface.")
+                                    .foregroundStyle(GraphiteCopperTheme.textPrimary)
+                                Text("Calendar-first shift logging with graphite surfaces and focused copper highlights.")
                                     .font(.subheadline)
-                                    .foregroundStyle(.white.opacity(0.82))
+                                    .foregroundStyle(GraphiteCopperTheme.textSecondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -65,7 +65,7 @@ struct SettingsView: View {
                             } else {
                                 Text("Enter your Apple ID and app-specific password to sync with travel time via CalDAV.")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(GraphiteCopperTheme.textSecondary)
                             }
 
                             SettingsStatusRow(
@@ -170,7 +170,7 @@ struct SettingsView: View {
                                 .frame(maxWidth: .infinity)
                             }
                             .adaptivePrimaryButtonStyle()
-                            .tint(.orange)
+                            .tint(GraphiteCopperTheme.copper)
 
                             if let travelTestReport {
                                 ScrollView {
@@ -209,7 +209,7 @@ struct SettingsView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .adaptivePrimaryButtonStyle()
-                            .tint(.orange)
+                            .tint(GraphiteCopperTheme.copper)
                         }
 
                         GlassCard(style: .subtle) {
@@ -324,7 +324,7 @@ private struct SettingsStatusRow: View {
         HStack(spacing: 10) {
             Text(title)
                 .font(.caption.weight(.medium))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(GraphiteCopperTheme.textSecondary)
 
             Spacer()
 
@@ -332,10 +332,10 @@ private struct SettingsStatusRow: View {
                 .font(.caption.weight(.semibold))
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
-                .background((isHealthy ? Color.green : Color.orange).opacity(0.22), in: Capsule(style: .continuous))
+                .background((isHealthy ? Color.green : GraphiteCopperTheme.copper).opacity(0.24), in: Capsule(style: .continuous))
                 .overlay {
                     Capsule(style: .continuous)
-                        .stroke(.white.opacity(0.18), lineWidth: 1)
+                        .stroke(GraphiteCopperTheme.hairline, lineWidth: 1)
                         .allowsHitTesting(false)
                 }
         }
@@ -358,10 +358,10 @@ private struct SettingsGlassSection<Content: View>: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label(title, systemImage: icon)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(GraphiteCopperTheme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(.white.opacity(0.08), in: Capsule(style: .continuous))
+                    .background(GraphiteCopperTheme.copper.opacity(0.10), in: Capsule(style: .continuous))
 
                 content
             }
@@ -383,16 +383,16 @@ private struct SettingsTextFieldRow<Content: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(GraphiteCopperTheme.textSecondary)
             field
                 .foregroundStyle(.white)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(GraphiteCopperTheme.graphite900.opacity(0.58), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(.white.opacity(0.24), lineWidth: 1)
+                        .stroke(GraphiteCopperTheme.hairline, lineWidth: 1)
                         .allowsHitTesting(false)
                 }
         }
@@ -412,14 +412,14 @@ private struct SettingsValueRow<Content: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(GraphiteCopperTheme.textSecondary)
             content
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(GraphiteCopperTheme.graphite900.opacity(0.58), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(.white.opacity(0.24), lineWidth: 1)
+                        .stroke(GraphiteCopperTheme.hairline, lineWidth: 1)
                         .allowsHitTesting(false)
                 }
         }

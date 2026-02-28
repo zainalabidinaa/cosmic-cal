@@ -18,23 +18,28 @@ struct LogView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                AdaptiveGlassGroup(spacing: 18) {
+                AdaptiveGlassGroup(spacing: 16) {
                     VStack(spacing: 16) {
                         GlassCard(style: .elevated) {
-                            VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 14) {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Shift Preview")
-                                            .font(.caption.weight(.medium))
-                                            .foregroundStyle(.white.opacity(0.75))
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Today")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(GraphiteCopperTheme.textSecondary)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 4)
+                                            .background(GraphiteCopperTheme.copper.opacity(0.18), in: Capsule(style: .continuous))
                                         Text(Formatters.day.string(from: day))
-                                            .font(.headline)
+                                            .font(.headline.weight(.semibold))
+                                            .foregroundStyle(GraphiteCopperTheme.textPrimary)
                                     }
 
                                     Spacer()
 
                                     Text(durationPreview)
                                         .font(.system(size: 32, weight: .bold, design: .rounded).monospacedDigit())
+                                        .foregroundStyle(GraphiteCopperTheme.textPrimary)
                                 }
 
                                 HStack(spacing: 8) {
@@ -50,7 +55,7 @@ struct LogView: View {
                                         Capsule(style: .continuous)
                                             .fill(
                                                 LinearGradient(
-                                                    colors: [.orange.opacity(0.9), .yellow.opacity(0.7)],
+                                                    colors: [GraphiteCopperTheme.copper, GraphiteCopperTheme.amber],
                                                     startPoint: .leading,
                                                     endPoint: .trailing
                                                 )
@@ -69,18 +74,18 @@ struct LogView: View {
                                 HStack {
                                     Label("Shift", systemImage: "calendar")
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(GraphiteCopperTheme.textSecondary)
 
                                     Spacer()
 
                                     Text(durationPreview)
                                         .font(.subheadline.weight(.bold).monospacedDigit())
-                                        .foregroundStyle(.primary)
+                                        .foregroundStyle(GraphiteCopperTheme.textPrimary)
                                 }
 
                                 DatePicker("Day", selection: $day, displayedComponents: .date)
                                     .datePickerStyle(.compact)
-                                    .tint(.orange)
+                                    .tint(GraphiteCopperTheme.copper)
                                     .onChange(of: day) { _, newValue in loadForDay(newValue) }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -115,15 +120,15 @@ struct LogView: View {
                             VStack(alignment: .leading, spacing: 10) {
                                 Label("Times", systemImage: "clock")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(GraphiteCopperTheme.textSecondary)
 
                                 DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
                                     .datePickerStyle(.compact)
-                                    .tint(.orange)
+                                    .tint(GraphiteCopperTheme.copper)
 
                                 DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
                                     .datePickerStyle(.compact)
-                                    .tint(.orange)
+                                    .tint(GraphiteCopperTheme.copper)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -141,7 +146,7 @@ struct LogView: View {
                         if let error = store.lastErrorMessage {
                             GlassCard(style: .subtle) {
                                 Label(error, systemImage: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(GraphiteCopperTheme.copperSoft)
                                     .font(.subheadline.weight(.medium))
                             }
                             .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
@@ -153,7 +158,7 @@ struct LogView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 100)
                 .opacity(animateIn ? 1 : 0.6)
-                .offset(y: animateIn ? 0 : 18)
+                .offset(y: animateIn ? 0 : 14)
                 .animation(.easeOut(duration: 0.35), value: animateIn)
             }
             .safeAreaInset(edge: .bottom) {
@@ -175,7 +180,7 @@ struct LogView: View {
                 }
                 .adaptivePrimaryButtonStyle()
                 .controlSize(.large)
-                .tint(.orange)
+                .tint(GraphiteCopperTheme.copper)
                 .disabled(isSaving)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -194,16 +199,16 @@ struct LogView: View {
                         .font(.headline.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(.white.opacity(0.12), in: Capsule(style: .continuous))
+                        .background(GraphiteCopperTheme.copper.opacity(0.14), in: Capsule(style: .continuous))
                         .adaptiveGlassUnion(id: "logsurfaces", namespace: logSurfaceNamespace)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Text(Formatters.day.string(from: day))
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(GraphiteCopperTheme.textSecondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(.white.opacity(0.08), in: Capsule(style: .continuous))
+                        .background(.white.opacity(0.06), in: Capsule(style: .continuous))
                 }
             }
             .sensoryFeedback(.success, trigger: successHapticTrigger)
@@ -322,12 +327,12 @@ private struct TemplateChip: View {
                 .padding(.horizontal, 14)
                 .foregroundStyle(isActive ? .white : .primary)
                 .background(
-                    isActive ? Color.orange.opacity(0.75) : Color.white.opacity(0.12),
+                    isActive ? GraphiteCopperTheme.copper.opacity(0.72) : Color.white.opacity(0.10),
                     in: Capsule(style: .continuous)
                 )
                 .overlay {
                     Capsule(style: .continuous)
-                        .stroke(.white.opacity(isActive ? 0.18 : 0.1), lineWidth: 1)
+                        .stroke(.white.opacity(isActive ? 0.24 : 0.12), lineWidth: 1)
                 }
         }
         .buttonStyle(.plain)
@@ -344,12 +349,17 @@ private struct TimeBadge: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.caption2.weight(.medium))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(GraphiteCopperTheme.textSecondary)
             Text(value)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(GraphiteCopperTheme.textPrimary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(GraphiteCopperTheme.hairline, lineWidth: 1)
+        }
     }
 }

@@ -8,11 +8,22 @@ enum GlassCardStyle {
     var strokeOpacity: Double {
         switch self {
         case .regular:
-            return 0.22
+            return 0.18
         case .elevated:
-            return 0.3
+            return 0.24
         case .subtle:
-            return 0.16
+            return 0.12
+        }
+    }
+
+    var shadowOpacity: Double {
+        switch self {
+        case .regular:
+            return 0.18
+        case .elevated:
+            return 0.26
+        case .subtle:
+            return 0.10
         }
     }
 }
@@ -33,6 +44,7 @@ struct GlassCard<Content: View>: View {
                 content
                     .padding(16)
                     .glassEffect(liquidGlass, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .shadow(color: .black.opacity(style.shadowOpacity), radius: 20, x: 0, y: 10)
                     .overlay {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
@@ -42,7 +54,7 @@ struct GlassCard<Content: View>: View {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [.white.opacity(0.16), .clear],
+                                    colors: [.white.opacity(0.14), .clear],
                                     startPoint: .topLeading,
                                     endPoint: .center
                                 )
@@ -63,6 +75,7 @@ struct GlassCard<Content: View>: View {
         content
             .padding(16)
             .background(backgroundStyle, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: .black.opacity(style.shadowOpacity * 0.9), radius: 16, x: 0, y: 8)
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(.white.opacity(style.strokeOpacity), lineWidth: 1)
@@ -77,7 +90,7 @@ struct GlassCard<Content: View>: View {
         case .regular:
             return .regular
         case .elevated:
-            return .regular.tint(.orange.opacity(0.18))
+            return .regular.tint(GraphiteCopperTheme.copper.opacity(0.18))
         case .subtle:
             return .clear
         }
@@ -89,9 +102,9 @@ struct GlassCard<Content: View>: View {
         case .regular:
             return AnyShapeStyle(.ultraThinMaterial)
         case .elevated:
-            return AnyShapeStyle(Color.orange.opacity(0.12))
+            return AnyShapeStyle(GraphiteCopperTheme.copper.opacity(0.14))
         case .subtle:
-            return AnyShapeStyle(Color.white.opacity(0.06))
+            return AnyShapeStyle(Color.white.opacity(0.05))
         }
     }
 }

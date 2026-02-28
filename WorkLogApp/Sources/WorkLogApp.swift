@@ -27,7 +27,7 @@ struct WorkLogApp: App {
                     SettingsView()
                 }
             }
-            .tint(.orange)
+            .tint(GraphiteCopperTheme.copper)
             .preferredColorScheme(.dark)
             .adaptiveBottomAccessory {
                 HStack(spacing: 8) {
@@ -38,7 +38,7 @@ struct WorkLogApp: App {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(.white.opacity(0.1), in: Capsule(style: .continuous))
+                .background(GraphiteCopperTheme.copper.opacity(0.14), in: Capsule(style: .continuous))
             }
             .adaptiveTabBarBehavior()
             .background {

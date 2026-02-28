@@ -35,17 +35,18 @@ struct HistoryView: View {
                                         HStack {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text("Shift Archive")
-                                                    .font(.caption.weight(.medium))
-                                                    .foregroundStyle(.white.opacity(0.75))
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(GraphiteCopperTheme.textSecondary)
                                                 Text("\(store.logs.count) logs")
                                                     .font(.title3.weight(.bold))
+                                                    .foregroundStyle(GraphiteCopperTheme.textPrimary)
                                             }
                                             Spacer()
                                             Text(formatHours(totalHours))
                                                 .font(.title2.weight(.bold).monospacedDigit())
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 6)
-                                                .background(.white.opacity(0.1), in: Capsule(style: .continuous))
+                                                .background(GraphiteCopperTheme.copper.opacity(0.14), in: Capsule(style: .continuous))
                                         }
 
                                         HStack(spacing: 0) {
@@ -92,9 +93,9 @@ struct HistoryView: View {
                                 }
                             }
                         } header: {
-                            Text("Saved Shifts")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                Text("Saved Shifts")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(GraphiteCopperTheme.textSecondary)
                         }
                     }
                     .listStyle(.plain)
@@ -116,7 +117,7 @@ struct HistoryView: View {
                             Image(systemName: "square.and.arrow.up")
                         }
                         .adaptivePrimaryButtonStyle()
-                        .tint(.orange)
+                        .tint(GraphiteCopperTheme.copper)
                         .adaptiveGlassUnion(id: "historysummary", namespace: summaryNamespace)
                     }
                 }
@@ -180,9 +181,10 @@ private struct SummaryItem: View {
         VStack(spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(GraphiteCopperTheme.textSecondary)
             Text(value)
                 .font(.title2.weight(.semibold).monospacedDigit())
+                .foregroundStyle(GraphiteCopperTheme.textPrimary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -198,7 +200,7 @@ private struct HistoryRow: View {
             Circle()
                 .fill(
                     LinearGradient(
-                        colors: [.orange.opacity(0.9), .yellow.opacity(0.75)],
+                        colors: [GraphiteCopperTheme.copper, GraphiteCopperTheme.amber],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -208,15 +210,17 @@ private struct HistoryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(day)
                     .font(.headline)
+                    .foregroundStyle(GraphiteCopperTheme.textPrimary)
                 Text(time)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(GraphiteCopperTheme.textSecondary)
             }
 
             Spacer(minLength: 10)
 
             Text(duration)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(GraphiteCopperTheme.textPrimary)
 
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
