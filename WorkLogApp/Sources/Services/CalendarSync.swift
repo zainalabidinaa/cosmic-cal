@@ -89,12 +89,14 @@ final class CalendarSync {
             CLLocation(latitude: $0.latitude, longitude: $0.longitude)
         }
         let useCurrentLocationStart = settings.travelOriginMode == .currentLocation
-        let travelStartAddress = useCurrentLocationStart ? "Current Location" : settings.originFallbackAddress
+        // For current location: pass nil address (no X-ADDRESS / X-APPLE-RADIUS on origin)
+        // For custom address: pass the configured fallback address string
+        let travelStartAddress: String? = useCurrentLocationStart ? nil : settings.originFallbackAddress
         let travelRaw = await estimateTravelTimeSeconds(
             from: origin, to: destinationLoc, arrivalDate: log.start
         ) ?? fallbackTravelTime
+        // Always emit travel duration — even in "based on driving" mode Apple includes it
         let travelMinutes = max(1, Int((travelRaw / 60).rounded()))
-        let fixedDurationForICS: Int? = settings.travelTimeMode == .fixedEstimate ? travelMinutes : nil
 
         let ics = ICSBuilder.buildEvent(
             uid: uid,
@@ -106,7 +108,7 @@ final class CalendarSync {
             travelStartTitle: origin?.title,
             travelStartAddress: travelStartAddress,
             travelStartCoordinate: originCoord,
-            travelDurationMinutes: fixedDurationForICS,
+            travelDurationMinutes: travelMinutes,
             travelAlarmMinutes: travelMinutes,
             travelStartIsCurrentLocation: useCurrentLocationStart
         )
@@ -220,6 +222,37 @@ final class CalendarSync {
         let testStart = Calendar.current.date(byAdding: .minute, value: 90, to: now) ?? now
         let testEnd = Calendar.current.date(byAdding: .minute, value: 120, to: now) ?? now.addingTimeInterval(1800)
         let testLog = WorkLog(day: testStart.startOfLocalDay(), start: testStart, end: testEnd)
+
+        // Also dump the raw ICS so we can verify the format field-by-field
+        if let credentials = makeCalDAVCredentials() {
+            let uid = UUID().uuidString + "@worklog-test"
+            let destinationCoord = try? await geocode(address: settings.destinationAddress)
+            let origin = await resolveOriginLocation()
+            let originCoord = origin?.location.coordinate
+            let destinationLoc = destinationCoord.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
+            let useCurrentLocationStart = settings.travelOriginMode == .currentLocation
+            let travelStartAddress: String? = useCurrentLocationStart ? nil : settings.originFallbackAddress
+            let travelRaw = await estimateTravelTimeSeconds(from: origin, to: destinationLoc, arrivalDate: testStart) ?? fallbackTravelTime
+            let travelMinutes = max(1, Int((travelRaw / 60).rounded()))
+            let ics = ICSBuilder.buildEvent(
+                uid: uid,
+                title: settings.eventTitle,
+                start: testStart,
+                end: testEnd,
+                location: settings.destinationAddress,
+                locationCoordinate: destinationCoord,
+                travelStartTitle: origin?.title,
+                travelStartAddress: travelStartAddress,
+                travelStartCoordinate: originCoord,
+                travelDurationMinutes: travelMinutes,
+                travelAlarmMinutes: travelMinutes,
+                travelStartIsCurrentLocation: useCurrentLocationStart
+            )
+            lines.append("--- ICS DUMP ---")
+            lines.append(ics.replacingOccurrences(of: "\r\n", with: "\n"))
+            lines.append("--- END ICS ---")
+            _ = credentials  // suppress unused warning; ICS dump is the goal
+        }
 
         do {
             let result = try await syncEvent(for: testLog)
