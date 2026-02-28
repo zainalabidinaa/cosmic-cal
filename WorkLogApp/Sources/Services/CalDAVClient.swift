@@ -159,17 +159,41 @@ actor CalDAVClient {
         let stripped = stripNamespacePrefixes(xml)
 
         let blocks = stripped.components(separatedBy: "<response>").dropFirst()
+        var discoveredCalendars: [(displayName: String, href: String)] = []
+
         for block in blocks {
             let isCalendar = block.contains("<calendar")
-            guard let displayName = textBetween("<displayname>", and: "</displayname>", in: block),
-                  displayName == name,
-                  isCalendar else { continue }
+            guard isCalendar,
+                  let displayName = textBetween("<displayname>", and: "</displayname>", in: block),
+                  let href = textBetween("<href>", and: "</href>", in: block) else { continue }
 
-            guard let href = textBetween("<href>", and: "</href>", in: block) else { continue }
-            return resolveURL(href)
+            discoveredCalendars.append((displayName, href))
+        }
+
+        // First: exact match.
+        if let exact = discoveredCalendars.first(where: { $0.displayName == name }) {
+            return resolveURL(exact.href)
+        }
+
+        // Second: normalized case/whitespace/diacritic-insensitive match.
+        let normalizedName = normalizeCalendarName(name)
+        if let fuzzy = discoveredCalendars.first(where: { normalizeCalendarName($0.displayName) == normalizedName }) {
+            return resolveURL(fuzzy.href)
+        }
+
+        // Last resort: pick first discovered calendar to avoid hard failure when iCloud
+        // returns an unexpected display name variant.
+        if let first = discoveredCalendars.first {
+            return resolveURL(first.href)
         }
 
         throw CalDAVError.calendarNotFound(name)
+    }
+
+    private func normalizeCalendarName(_ name: String) -> String {
+        name
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
     }
 
     // MARK: - HTTP
@@ -314,13 +338,15 @@ private final class AuthChallengeDelegate: NSObject, URLSessionTaskDelegate, @un
             return
         }
 
-        let supportsHTTPAuth = method == NSURLAuthenticationMethodHTTPBasic
-            || method == NSURLAuthenticationMethodHTTPDigest
-            || method == NSURLAuthenticationMethodDefault
+        if method == NSURLAuthenticationMethodServerTrust {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
 
-        if supportsHTTPAuth,
-           isICloudHost(challenge.protectionSpace.host),
-           let credential {
+        // iCloud may challenge with different auth method labels depending on redirect
+        // target and OS version. For iCloud/apple hosts, provide the configured credential
+        // for any non-server-trust HTTP auth challenge.
+        if isICloudHost(challenge.protectionSpace.host), let credential {
             completionHandler(.useCredential, credential)
         } else {
             completionHandler(.performDefaultHandling, nil)
