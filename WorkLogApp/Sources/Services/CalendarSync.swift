@@ -37,36 +37,11 @@ final class CalendarSync {
         self.settings = settings
     }
 
-    var calDAVAvailable: Bool { settings.calDAVConfigured }
-
     // MARK: - Unified Sync
 
     func syncEvent(for log: WorkLog) async throws -> SyncResult {
-        // When CalDAV credentials are configured, use CalDAV exclusively.
-        // Do NOT fall through to EventKit on failure — that causes duplicate events
-        // (CalDAV may partially succeed while EventKit also creates one).
-        let credentialCandidates = makeCalDAVCredentialCandidates()
-        if !credentialCandidates.isEmpty {
-            var sawInvalidCredentials = false
-            for credentials in credentialCandidates {
-                do {
-                    let uid = try await upsertViaCalDAV(for: log, credentials: credentials)
-                    return .calDAV(uid)
-                } catch {
-                    if case CalDAVError.invalidCredentials = error {
-                        sawInvalidCredentials = true
-                        continue
-                    }
-                    throw error
-                }
-            }
-
-            if sawInvalidCredentials {
-                throw CalDAVError.invalidCredentials
-            }
-        }
-
-        // No CalDAV credentials — use EventKit.
+        // Keep saves reliable: EventKit is the primary sync path.
+        // CalDAV remains explicit/optional via the travel metadata test action.
         try await requestAccessIfNeeded()
         let eventId = try await upsertEvent(for: log)
         return .eventKit(eventId)
@@ -261,7 +236,8 @@ final class CalendarSync {
 
     func runTravelMetadataTest() async -> String {
         var lines: [String] = []
-        lines.append("Sync configured: \(settings.calDAVConfigured ? "CalDAV" : "EventKit fallback")")
+        lines.append("Sync configured: EventKit primary")
+        lines.append("CalDAV credentials: \(settings.calDAVConfigured ? "available" : "missing")")
         lines.append("Travel origin: \(settings.travelOriginMode.title)")
         lines.append("Travel mode: \(settings.travelTimeMode.title)")
         lines.append("Calendar: \(settings.calendarName)")
@@ -358,7 +334,7 @@ final class CalendarSync {
             return lines.joined(separator: "\n")
         }
 
-        lines.append("CalDAV credentials missing; running EventKit fallback test.")
+        lines.append("CalDAV credentials missing; running EventKit primary test.")
         do {
             let result = try await syncEvent(for: testLog)
             switch result {

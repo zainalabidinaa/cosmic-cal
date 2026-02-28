@@ -59,11 +59,11 @@ struct SettingsView: View {
                             }
 
                             if settings.calDAVConfigured {
-                                Label("CalDAV enabled — travel time included.", systemImage: "checkmark.circle.fill")
+                                Label("CalDAV credentials saved — use Travel Metadata Test for CalDAV checks.", systemImage: "checkmark.circle.fill")
                                     .font(.caption.weight(.medium))
                                     .foregroundStyle(.green)
                             } else {
-                                Text("Enter your Apple ID and app-specific password to sync with travel time via CalDAV.")
+                                Text("EventKit is used for normal saves. Add Apple ID + app-specific password only to run CalDAV travel metadata tests.")
                                     .font(.caption)
                                     .foregroundStyle(GraphiteCopperTheme.textSecondary)
                             }
@@ -71,7 +71,7 @@ struct SettingsView: View {
                             SettingsStatusRow(
                                 title: "Sync Path",
                                 value: syncPathLabel,
-                                isHealthy: settings.calDAVConfigured
+                                isHealthy: true
                             )
 
                             SettingsStatusRow(
@@ -252,7 +252,7 @@ struct SettingsView: View {
     }
 
     private var syncPathLabel: String {
-        settings.calDAVConfigured ? "CalDAV active" : "EventKit fallback"
+        settings.calDAVConfigured ? "EventKit primary · CalDAV optional" : "EventKit primary"
     }
 
     private var calendarCompatibilityLabel: String {

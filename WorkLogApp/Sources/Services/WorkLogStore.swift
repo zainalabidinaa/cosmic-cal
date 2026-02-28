@@ -67,7 +67,11 @@ final class WorkLogStore: ObservableObject {
             var saved = logToSave
             switch result {
             case .eventKit(let eventId):
+                if let legacyUID = saved.calDAVUID {
+                    Task { await calendarSync.deleteCalDAVEvent(uid: legacyUID) }
+                }
                 saved.calendarEventIdentifier = eventId
+                saved.calDAVUID = nil
             case .calDAV(let uid):
                 saved.calDAVUID = uid
             }
@@ -82,7 +86,7 @@ final class WorkLogStore: ObservableObject {
             let method: String
             switch result {
             case .eventKit:
-                method = settings.calendarName
+                method = "EventKit · \(settings.calendarName)"
             case .calDAV:
                 method = settings.travelTimeMode == .dynamicDriving ? "CalDAV · dynamic driving" : "CalDAV · fixed estimate"
             }

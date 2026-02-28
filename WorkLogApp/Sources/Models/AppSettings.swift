@@ -62,7 +62,13 @@ final class AppSettings: ObservableObject {
     @Published var iCloudEmail: String { didSet { persistIfReady() } }
 
     var calDAVConfigured: Bool {
-        !iCloudEmail.isEmpty && KeychainHelper.loadPassword(account: iCloudEmail) != nil
+        let raw = iCloudEmail
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = trimmed.lowercased()
+        guard !trimmed.isEmpty else { return false }
+        return KeychainHelper.loadPassword(account: raw) != nil
+            || KeychainHelper.loadPassword(account: trimmed) != nil
+            || KeychainHelper.loadPassword(account: lower) != nil
     }
 
     private var ready = false
