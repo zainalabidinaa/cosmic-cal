@@ -21,7 +21,6 @@ enum ICSBuilder {
     ///   - travelStartAddress: Full address of origin (nil for Current Location)
     ///   - travelStartCoordinate: Geocoded origin coordinate
     ///   - travelDurationMinutes: Estimated travel minutes (always emitted)
-    ///   - travelAlarmMinutes: Minutes before event start used for alarm offsets
     ///   - travelStartIsCurrentLocation: true → omit X-ADDRESS and X-APPLE-RADIUS on origin
     ///   - creatorIdentity: Bundle ID + team suffix for X-APPLE-CREATOR-IDENTITY
     static func buildEvent(
@@ -35,7 +34,6 @@ enum ICSBuilder {
         travelStartAddress: String?,
         travelStartCoordinate: CLLocationCoordinate2D?,
         travelDurationMinutes: Int,
-        travelAlarmMinutes: Int,
         travelStartIsCurrentLocation: Bool,
         creatorIdentity: String = "com.zainalabidinaa.labmedicinlu.27FUHMHBAD"
     ) -> String {
@@ -120,10 +118,9 @@ enum ICSBuilder {
             lines.append(contentsOf: foldLine(travelLine))
         }
 
-        // Alarms: 0 min before travel start, 30 min before, 1 hour before
-        appendAlarm(to: &lines, beforeTravelMinutes: 0,  travelMinutes: travelAlarmMinutes)
-        appendAlarm(to: &lines, beforeTravelMinutes: 30, travelMinutes: travelAlarmMinutes)
-        appendAlarm(to: &lines, beforeTravelMinutes: 60, travelMinutes: travelAlarmMinutes)
+        // Match the target run behavior: only 30m and 1h reminders.
+        appendAlarm(to: &lines, trigger: "-PT30M")
+        appendAlarm(to: &lines, trigger: "-PT1H")
 
         // Silent alarm marker (Apple Calendar always adds this)
         lines += [
@@ -145,16 +142,14 @@ enum ICSBuilder {
 
     private static func appendAlarm(
         to lines: inout [String],
-        beforeTravelMinutes: Int,
-        travelMinutes: Int
+        trigger: String
     ) {
         let uuid = UUID().uuidString.uppercased()
-        let totalMinutes = travelMinutes + beforeTravelMinutes
         lines += [
             "BEGIN:VALARM",
             "ACTION:DISPLAY",
             "DESCRIPTION:Reminder",
-            "TRIGGER:-PT\(totalMinutes)M",
+            "TRIGGER:\(trigger)",
             "UID:\(uuid)",
             "X-WR-ALARMUID:\(uuid)",
             "END:VALARM",

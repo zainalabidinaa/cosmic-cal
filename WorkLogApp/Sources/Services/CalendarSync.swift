@@ -2,6 +2,7 @@ import CoreLocation
 import EventKit
 import Foundation
 import MapKit
+import ObjectiveC.runtime
 
 enum CalendarSyncError: LocalizedError {
     case permissionDenied
@@ -29,7 +30,8 @@ final class CalendarSync {
     private let calDAVClient = CalDAVClient()
     private let settings: AppSettings
 
-    private let fallbackTravelTime: TimeInterval = 45 * 60
+    private let fallbackTravelTime: TimeInterval = 30 * 60
+    private let fixedTravelTimeSeconds: TimeInterval = 30 * 60
 
     init(settings: AppSettings) {
         self.settings = settings
@@ -158,7 +160,6 @@ final class CalendarSync {
             travelStartAddress: travelStartAddress,
             travelStartCoordinate: originCoord,
             travelDurationMinutes: travelMinutes,
-            travelAlarmMinutes: travelMinutes,
             travelStartIsCurrentLocation: useCurrentLocationStart
         )
 
@@ -230,16 +231,26 @@ final class CalendarSync {
 
         let origin = await resolveOriginLocation()
         if let origin {
-            setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
+            _ = setTravelStartLocationIfSupported(event: event, title: origin.title, location: origin.location)
         }
-        setTravelRoutingModeIfSupported(event: event)
+        _ = setTravelTimeEnabledIfSupported(event: event)
+        _ = setTravelRoutingModeIfSupported(event: event)
 
-        // Compute travel time for alarm offsets. Keep travel-time mode dynamic by not
-        // writing a fixed event travel duration.
-        let travelTimeSecondsRaw = await estimateTravelTimeSeconds(from: origin, to: structuredDestination.geoLocation, arrivalDate: log.start) ?? fallbackTravelTime
-        let travelTimeSeconds = (travelTimeSecondsRaw / 60).rounded() * 60
+        let basedOnLocationApplied = setTravelTimeModeIfSupported(event: event)
+            || setTravelTimeBasedOnLocationIfSupported(event: event)
 
-        applyDefaultAlarms(to: event, travelTime: travelTimeSeconds)
+        if !basedOnLocationApplied {
+            let estimatedTravelSeconds = await estimateTravelTimeSeconds(
+                from: origin,
+                to: structuredDestination.geoLocation,
+                arrivalDate: log.start
+            )
+            let rawTravelSeconds = estimatedTravelSeconds ?? fixedTravelTimeSeconds
+            let roundedTravelSeconds = (rawTravelSeconds / 60).rounded() * 60
+            _ = setFixedTravelTimeIfSupported(event: event, seconds: roundedTravelSeconds)
+        }
+
+        applyDefaultAlarms(to: event)
 
         try eventStore.save(event, span: .thisEvent, commit: true)
         if let oldEvent {
@@ -291,7 +302,6 @@ final class CalendarSync {
             travelStartAddress: travelStartAddress,
             travelStartCoordinate: originCoord,
             travelDurationMinutes: travelMinutes,
-            travelAlarmMinutes: travelMinutes,
             travelStartIsCurrentLocation: useCurrentLocationStart
         )
 
@@ -365,27 +375,100 @@ final class CalendarSync {
         return lines.joined(separator: "\n")
     }
 
-    private func setTravelRoutingModeIfSupported(event: EKEvent) {
-        // Best-effort: prefer driving when Calendar computes "Based on location".
-        let keys = ["setTravelRoutingMode:", "setTravelMode:", "setTravelTransportType:"]
-        let drivingValues: [AnyObject] = [
-            NSNumber(value: 0),
-            NSString(string: "CAR"),
-            NSString(string: "DRIVING")
+    @discardableResult
+    private func setTravelRoutingModeIfSupported(event: EKEvent) -> Bool {
+        let setters: [Selector] = [
+            Selector(("setTravelRoutingMode:")),
+            Selector(("setTravelMode:")),
+            Selector(("setTravelTransportType:"))
         ]
 
-        for key in keys {
-            let setter = Selector(key)
-            if event.responds(to: setter) {
-                for value in drivingValues {
-                    _ = event.perform(setter, with: value)
-                }
-                return
-            }
+        for setter in setters {
+            if ObjCInvocation.safeSetInteger(target: event, selector: setter, value: 0) { return true }
+            if ObjCInvocation.safeSetObject(target: event, selector: setter, value: NSNumber(value: 0)) { return true }
         }
+
+        return false
     }
 
-    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) {
+    @discardableResult
+    private func setTravelTimeBasedOnLocationIfSupported(event: EKEvent) -> Bool {
+        let boolSetters: [Selector] = [
+            Selector(("setTravelTimeBasedOnLocation:")),
+            Selector(("setTravelTimeIsBasedOnLocation:")),
+            Selector(("setUsesTravelTimeBasedOnLocation:")),
+            Selector(("setUseTravelTimeBasedOnLocation:")),
+            Selector(("setTravelTimeIsEstimated:"))
+        ]
+
+        for selector in boolSetters {
+            if ObjCInvocation.safeSetBool(target: event, selector: selector, value: true) { return true }
+            if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: 1) { return true }
+            if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: true)) { return true }
+        }
+
+        return false
+    }
+
+    @discardableResult
+    private func setTravelTimeModeIfSupported(event: EKEvent) -> Bool {
+        let selectors: [Selector] = [
+            Selector(("setTravelTimeMode:")),
+            Selector(("setTravelTimeType:")),
+            Selector(("setTravelTimeOption:"))
+        ]
+
+        for selector in selectors {
+            for value in [1, 2] {
+                if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: value) { return true }
+                if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: value)) { return true }
+            }
+        }
+
+        return false
+    }
+
+    @discardableResult
+    private func setFixedTravelTimeIfSupported(event: EKEvent, seconds: TimeInterval) -> Bool {
+        let selectors: [Selector] = [
+            Selector(("setTravelTime:")),
+            Selector(("setTravelTimeInterval:")),
+            Selector(("setTravelTimeInSeconds:"))
+        ]
+
+        for selector in selectors {
+            if ObjCInvocation.safeSetDouble(target: event, selector: selector, value: seconds) { return true }
+            if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: Int(seconds)) { return true }
+            if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: seconds)) { return true }
+        }
+
+        return false
+    }
+
+    @discardableResult
+    private func setTravelTimeEnabledIfSupported(event: EKEvent) -> Bool {
+        let setters: [Selector] = [
+            Selector(("setTravelTimeEnabled:")),
+            Selector(("setTravelTimeIsEnabled:")),
+            Selector(("setHasTravelTime:")),
+            Selector(("setTravelTimeActive:")),
+            Selector(("setShouldIncludeTravelTime:")),
+            Selector(("setIncludeTravelTime:")),
+            Selector(("setTravelTimeOn:")),
+            Selector(("setIncludesTravelTime:"))
+        ]
+
+        for selector in setters {
+            if ObjCInvocation.safeSetBool(target: event, selector: selector, value: true) { return true }
+            if ObjCInvocation.safeSetInteger(target: event, selector: selector, value: 1) { return true }
+            if ObjCInvocation.safeSetObject(target: event, selector: selector, value: NSNumber(value: true)) { return true }
+        }
+
+        return false
+    }
+
+    @discardableResult
+    private func setTravelStartLocationIfSupported(event: EKEvent, title: String, location: CLLocation) -> Bool {
         let structured = EKStructuredLocation(title: title)
         structured.geoLocation = location
 
@@ -398,9 +481,10 @@ final class CalendarSync {
 
         for setter in setterSelectors where event.responds(to: setter) {
             _ = event.perform(setter, with: structured)
-            return
+            return true
         }
 
+        return false
     }
 
     private func resolveOriginLocation() async -> (title: String, location: CLLocation)? {
@@ -421,13 +505,10 @@ final class CalendarSync {
         }
     }
 
-    private func applyDefaultAlarms(to event: EKEvent, travelTime: TimeInterval) {
-        // Travel-time-relative alarms (Calendar menu: "... before travel time").
-        // These offsets are relative to the event start date.
+    private func applyDefaultAlarms(to event: EKEvent) {
         let offsets: [TimeInterval] = [
-            -(travelTime + 30 * 60),
-            -(travelTime + 1 * 60 * 60),
-            -travelTime
+            -30 * 60,
+            -60 * 60
         ]
 
         event.alarms = offsets.map { EKAlarm(relativeOffset: $0) }
@@ -514,6 +595,164 @@ final class CalendarSync {
         @unknown default:
             return "Unknown"
         }
+    }
+}
+
+private enum ObjCInvocation {
+    static func safeSetOptionalObject(target: NSObject, selector: Selector, value: NSObject?) -> Bool {
+        guard target.responds(to: selector),
+              let method = class_getInstanceMethod(type(of: target), selector)
+        else {
+            return false
+        }
+
+        guard isVoidReturn(method: method), isObjectArgument(method: method, index: 2) else {
+            return false
+        }
+
+        let imp = target.method(for: selector)
+        typealias Fn = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
+        let fn = unsafeBitCast(imp, to: Fn.self)
+        fn(target, selector, value)
+        return true
+    }
+
+    static func safeSetObject(target: NSObject, selector: Selector, value: NSObject) -> Bool {
+        safeSetOptionalObject(target: target, selector: selector, value: value)
+    }
+
+    static func safeSetBool(target: NSObject, selector: Selector, value: Bool) -> Bool {
+        guard target.responds(to: selector),
+              let method = class_getInstanceMethod(type(of: target), selector)
+        else {
+            return false
+        }
+
+        guard isVoidReturn(method: method) else {
+            return false
+        }
+
+        let argType = copyArgumentType(method: method, index: 2)
+        guard let first = argType.first else { return false }
+
+        switch first {
+        case "B":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Bool) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, value)
+            return true
+        case "c":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Int8) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, value ? 1 : 0)
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func safeSetDouble(target: NSObject, selector: Selector, value: Double) -> Bool {
+        guard target.responds(to: selector),
+              let method = class_getInstanceMethod(type(of: target), selector)
+        else {
+            return false
+        }
+
+        guard isVoidReturn(method: method) else {
+            return false
+        }
+
+        let argType = copyArgumentType(method: method, index: 2)
+        guard let first = argType.first else { return false }
+
+        switch first {
+        case "d":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Double) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, value)
+            return true
+        case "f":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Float) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, Float(value))
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func safeSetInteger(target: NSObject, selector: Selector, value: Int) -> Bool {
+        guard target.responds(to: selector),
+              let method = class_getInstanceMethod(type(of: target), selector)
+        else {
+            return false
+        }
+
+        guard isVoidReturn(method: method) else {
+            return false
+        }
+
+        let argType = copyArgumentType(method: method, index: 2)
+        guard let first = argType.first else { return false }
+
+        switch first {
+        case "q":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Int64) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, Int64(value))
+            return true
+        case "i":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Int32) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, Int32(value))
+            return true
+        case "Q":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, UInt64) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, UInt64(value))
+            return true
+        case "I":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, UInt32) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, UInt32(value))
+            return true
+        case "B":
+            let imp = target.method(for: selector)
+            typealias Fn = @convention(c) (AnyObject, Selector, Bool) -> Void
+            let fn = unsafeBitCast(imp, to: Fn.self)
+            fn(target, selector, value != 0)
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func isVoidReturn(method: Method) -> Bool {
+        let c = method_copyReturnType(method)
+        defer { free(c) }
+        return String(cString: c) == "v"
+    }
+
+    private static func isObjectArgument(method: Method, index: UInt32) -> Bool {
+        let type = copyArgumentType(method: method, index: index)
+        guard let first = type.first else { return false }
+        return first == "@"
+    }
+
+    private static func copyArgumentType(method: Method, index: UInt32) -> String {
+        guard let c = method_copyArgumentType(method, index) else {
+            return ""
+        }
+        defer { free(c) }
+        return String(cString: c)
     }
 }
 
