@@ -199,11 +199,23 @@ actor CalDAVClient {
     }
 
     private func mappedTransportError(_ error: Error) -> Error {
-        guard let urlError = error as? URLError else {
+        let urlCode: URLError.Code?
+        if let urlError = error as? URLError {
+            urlCode = urlError.code
+        } else {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain {
+                urlCode = URLError.Code(rawValue: nsError.code)
+            } else {
+                urlCode = nil
+            }
+        }
+
+        guard let urlCode else {
             return error
         }
 
-        switch urlError.code {
+        switch urlCode {
         case .userAuthenticationRequired, .userCancelledAuthentication:
             return CalDAVError.invalidCredentials
         case .notConnectedToInternet, .networkConnectionLost:
@@ -213,7 +225,8 @@ actor CalDAVClient {
         case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateHasUnknownRoot:
             return CalDAVError.secureConnectionFailed
         default:
-            return CalDAVError.transportError(urlError.localizedDescription)
+            let nsError = error as NSError
+            return CalDAVError.transportError("\(nsError.domain) code=\(nsError.code): \(nsError.localizedDescription)")
         }
     }
 
